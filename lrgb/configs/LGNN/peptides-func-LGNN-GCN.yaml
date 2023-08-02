@@ -17,11 +17,11 @@ dataset:
   edge_encoder_bn: False
 train:
   mode: custom
-  batch_size: 128
+  batch_size: 64
   eval_period: 1
   ckpt_period: 100
 model:
-  type: gnn
+  type: custom_gnn
   loss_fun: cross_entropy
   graph_pooling: mean
 gnn:

@@ -105,82 +105,6 @@ def run_loop_settings():
         run_ids = split_indices
     return run_ids, seeds, split_indices
 
-def preprocess(loaders, lgvariant):
-    for loaderIdx, loader in enumerate(loaders):
-        loaderSplit = ["train", "valid", "test"]
-        print("Preprocessing {}".format(loaderSplit[loaderIdx]))
-        data = loader.dataset.data
-        slices = loader.dataset.slices
-        
-        edge_index = data.edge_index
-        edge_attr = data.edge_attr
-        numberOfGraphs = slices['y'].shape[0]-1
-        
-        x_index_slice = slices['x']
-        edge_index_slice = slices['edge_index']
-        
-        lg_node_index = edge_index
-        lg_node_index_slice = edge_index_slice
-        lg_edge_idx_list = []
-        lg_edge_idx_list_slice = [0]
-        
-        for graphIdx in tqdm(range(numberOfGraphs)):
-            graphNodeIdx = lg_node_index[:, lg_node_index_slice[graphIdx]:lg_node_index_slice[graphIdx+1]]
-            # graphEdgeIdx = edge_index[:, edge_index_slice[graphIdx]:edge_index_slice[graphIdx+1]]
-
-            # How to make egees
-            if lgvariant ==1 :
-                # Non-backtracking edges
-                lg_edge_index = torch.nonzero(
-                    (graphNodeIdx[:, 1, None] == graphNodeIdx[:, 0]) &
-                    (graphNodeIdx[:, 0, None] != graphNodeIdx[:, 1])
-                )
-            elif lgvariant == 2:
-                # Connect ij and jk, regardless of i and k
-                lg_edge_index = torch.nonzero(
-                    (graphNodeIdx[:, 1, None] == graphNodeIdx[:, 0])
-                )
-            
-            lg_edge_idx_list.append(lg_edge_idx.T)
-            lg_edge_idx_list_slice.append(lg_edge_idx_list_slice[-1]+lg_edge_idx.shape[0])
-            
-        loader.dataset.data.lg_edge_idx = torch.cat(lg_edge_idx_list, dim=1)
-        loader.dataset.slices['lg_edge_idx'] = torch.tensor(lg_edge_idx_list_slice, dtype=torch.int)
-        
-        # lg_node_x = torch.cat(lg_node_x, dim=0)
-        # lg_node_index = torch.cat(lg_node_index, dim=1)
-        # lg_node_index_slice = torch.tensor(lg_node_index_slice, dtype=torch.int)
-        # lg_edge_index = torch.cat(lg_edge_index, dim=1)
-        # lg_edge_attr = torch.cat(lg_edge_attr, dim=0)
-        # lg_edge_index_slice = torch.tensor(lg_edge_slice, dtype=torch.int)
-        # lg_edge_attr_slice = torch.tensor(lg_edge_slice, dtype=torch.int)
-        
-        #NOTE: to fix
-        # loader.dataset.data.org_x = x
-        # loader.dataset.slices['org_x'] = x_index_slice
-        # loader.dataset.data.org_edge_index = edge_index
-        # loader.dataset.slices['org_edge_index'] = edge_index_slice
-
-        # loader.dataset.data.lg_node_index = lg_node_index
-        # loader.dataset.data.edge_index = lg_edge_index
-        # loader.dataset.slices['edge_index'] = lg_edge_index_slice
-        # loader.dataset.data.x = edge_attr
-        # loader.dataset.slices['x'] = edge_index_slice
-        # loader.dataset.data.edge_attr = lg_edge_attr
-        # loader.dataset.slices['edge_attr'] = lg_edge_attr_slice
-        
-        
-        # pt_file[0].x = lg_x
-        # pt_file[1]['x'] = lg_x_slice
-        # pt_file[0].edge_index = lg_edge_index
-        # pt_file[1]['edge_index'] = lg_edge_index_slice
-        # pt_file[0].edge_attr = lg_edge_attr
-        # pt_file[1]['edge_attr'] = lg_edge_attr_slice
-        # pt_file[0].lg_node_idx = lg_node_index
-        # pt_file[1]['lg_node_idx'] = lg_node_index_slice
-        print("FLAG")
-        
-    return loaders
 
 if __name__ == '__main__':
     # Load cmd line args
@@ -213,9 +137,7 @@ if __name__ == '__main__':
             
         loggers = create_logger()
         model = create_model()
-        
-        if cfg.gnn.lgvariant == -1:
-            loaders = preprocess(loaders, cfg.gnn.lgvariant)
+            
         if cfg.train.finetune:
             model = init_model_from_pretrained(model, cfg.train.finetune,
                                                cfg.train.freeze_pretrained)
