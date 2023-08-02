@@ -6,8 +6,8 @@ import torch_geometric.nn as pyg_nn
 from torch_geometric.graphgym.models.layer import LayerConfig
 from torch_geometric.graphgym.register import register_layer
 
-class GCNConvLayer(nn.Module):
-    """GCN Layer 
+class GATConvLayer(nn.Module):
+    """GAT Layer 
     """
     def __init__(self, dim_in, dim_out, dropout, residual, lgvariant=0):
         super().__init__()
@@ -16,7 +16,7 @@ class GCNConvLayer(nn.Module):
         self.dropout = dropout
         self.residual = residual
 
-        self.model = pyg_nn.GCNConv(self.dim_in, self.dim_in)
+        self.model = pyg_nn.GATConv(self.dim_in, self.dim_in)
         self.lgvariant=lgvariant
 
     def forward(self, batch):

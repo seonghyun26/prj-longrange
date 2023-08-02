@@ -11,6 +11,7 @@ from graphgps.layer.gcnii_conv_layer import GCN2ConvLayer
 from graphgps.layer.gat_conv_layer import GATConvLayer
 from graphgps.layer.mlp_layer import MLPLayer
 from graphgps.layer.gcn_layer import GCNConvLayer
+from graphgps.layer.gat_layer import GATConvLayer
 from graphgps.layer.lgnn_layer import graph2linegraph, linegraph2graph
 
 class CustomGNN(torch.nn.Module):
