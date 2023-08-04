@@ -51,7 +51,8 @@ class CustomGNN(torch.nn.Module):
                         dropout=cfg.gnn.dropout,
                         residual=cfg.gnn.residual,
                     ))
-                layers.append(linegraph2graph(cfg.gnn.lgvariant))
+                if cfg.gnn.lgvariant != 7:
+                    layers.append(linegraph2graph(cfg.gnn.lgvariant))
         else:
             for _ in range(cfg.gnn.layers_mp):
                 layers.append(conv_model(
@@ -63,7 +64,12 @@ class CustomGNN(torch.nn.Module):
         self.gnn_layers = torch.nn.Sequential(*layers)
 
         GNNHead = register.head_dict[cfg.gnn.head]
-        self.post_mp = GNNHead(dim_in=cfg.gnn.dim_inner, dim_out=dim_out)
+        if cfg.gnn.linegraph and cfg.gnn.lgvariant == 7:
+            self.post_mp = GNNHead(dim_in=cfg.gnn.dim_inner*2, dim_out=dim_out)
+        else:
+            self.post_mp = GNNHead(dim_in=cfg.gnn.dim_inner, dim_out=dim_out)
+        # self.post_mp = GNNHead(dim_in=cfg.gnn.dim_inner, dim_out=dim_out)
+            
 
     def build_conv_model(self, model_type):
         if model_type == 'gatedgcnconv':
