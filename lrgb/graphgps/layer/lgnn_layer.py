@@ -24,9 +24,21 @@ class graph2linegraph(nn.Module):
         batch.org_edge_index = batch.edge_index
         batch.org_edge_attr = batch.edge_attr
         batch.org_batch = batch.batch
-        
         if hasattr(batch, 'x0'):
             batch.org_x0 = batch.x0
+        
+        # Add bb edges
+        if self.variant == 8:
+            # print("FLAG - v8")
+            node_count = torch.unique(batch.edge_index[0], return_counts=True)
+            leaf_node = torch.where(node_count[1] == 1)[0]
+            bb_edge = torch.stack((leaf_node, leaf_node), dim=0)
+            batch.edge_index = torch.cat((batch.edge_index, bb_edge), dim=1)
+            batch.edge_attr = torch.cat([batch.edge_attr, torch.zeros(leaf_node.shape[0], batch.edge_attr.shape[1], device=batch.y.device)], dim=0)
+            indices = torch.argsort(batch.edge_index.T, dim=0)
+            batch.edge_index = batch.edge_index.T[indices[:,0], :].T
+            batch.edge_attr = batch.edge_attr[indices[:,0], :]
+            
         
         lg_node_idx = batch.edge_index.T
         batch.lg_node_idx = lg_node_idx
@@ -50,7 +62,7 @@ class graph2linegraph(nn.Module):
         batch.edge_index = lg_edge_idx.T
         
         
-        # NOTE: line graph edge
+        # NOTE: line graph edge attribute
         new_edge_idx = lg_node_idx[lg_edge_idx]
         lg_edge_attr = batch.org_x[new_edge_idx[:, 0, 1]].repeat(1,2)
         if hasattr(batch, 'edge_attr'):
@@ -60,7 +72,12 @@ class graph2linegraph(nn.Module):
             startEdgeAttr = batch.org_edge_attr[scatter(startIndices[0], startIndices[1])]
             endIndices = torch.where(torch.all(batch.org_edge_index.T[:, None] == endEdge, dim=2))
             endEdgeAttr = batch.org_edge_attr[scatter(endIndices[0], endIndices[1], dim=0)]
-            lg_edge_attr = torch.stack([lg_edge_attr, torch.cat([startEdgeAttr, endEdgeAttr], dim=1)], dim=2).mean(dim=2)
+            if self.variant == 8 and startEdgeAttr.shape[0] < endEdgeAttr.shape[0]:
+                startEdgeAttr = torch.cat([startEdgeAttr, torch.zeros(endEdgeAttr.shape[0] - startEdgeAttr.shape[0], startEdgeAttr.shape[1], device=batch.y.device)], dim=0)
+            elif self.variant == 8 and startEdgeAttr.shape[0] > endEdgeAttr.shape[0]:
+                endEdgeAttr = torch.cat([endEdgeAttr, torch.zeros(startEdgeAttr.shape[0] - endEdgeAttr.shape[0], endEdgeAttr.shape[1], device=batch.y.device)], dim=0)
+            temp = torch.cat([startEdgeAttr, endEdgeAttr], dim=1)
+            lg_edge_attr = torch.stack([lg_edge_attr, temp], dim=2).mean(dim=2)
             del startIndices
             del endIndices
             del startEdgeAttr
@@ -68,10 +85,10 @@ class graph2linegraph(nn.Module):
         batch.edge_attr = lg_edge_attr
         del lg_edge_idx
         
-        ptr = batch.ptr
-        batch_size = batch.y.shape[0]
-        new_batch = torch.where((batch.org_edge_index [0] >= ptr[:-1].unsqueeze(1)) & (batch.org_edge_index [0] < ptr[1:].unsqueeze(1)))
         if self.variant ==7:
+            ptr = batch.ptr
+            batch_size = batch.y.shape[0]
+            new_batch = torch.where((batch.org_edge_index [0] >= ptr[:-1].unsqueeze(1)) & (batch.org_edge_index [0] < ptr[1:].unsqueeze(1)))
             batch.batch = new_batch[0]
 
         return batch
@@ -107,6 +124,10 @@ class linegraph2graph(nn.Module):
         frontEdge = self.pad(frontEdge, shape)
         backEdge = scatter_mean(batch.edge_attr, batch.edge_index.T[:,1], dim=0)[:, :shape[1]]
         backEdge = self.pad(backEdge, shape)
+        if self.variant == 8 and frontEdge.shape[0] > backEdge.shape[0]:
+            backEdge = torch.cat([backEdge, torch.zeros(frontEdge.shape[0] - backEdge.shape[0], backEdge.shape[1], device=batch.y.device)], dim=0)
+        elif self.variant == 8 and frontEdge.shape[0] < backEdge.shape[0]:
+            frontEdge = torch.cat([frontEdge, torch.zeros(backEdge.shape[0] - frontEdge.shape[0], frontEdge.shape[1], device=batch.y.device)], dim=0)
         batch.edge_attr = torch.add(
             frontEdge,
             backEdge,

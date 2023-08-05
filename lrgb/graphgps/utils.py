@@ -128,10 +128,11 @@ def make_wandb_name(cfg):
         model_name = f"GPS.{cfg.gt.layer_type}"
     model_name += f".{cfg.name_tag}" if cfg.name_tag else ""
     
+    model_name += str(cfg.gnn.layers_mp)
+    
     lgnn_name =""
     if cfg.gnn.linegraph:
         lgnn_name += "LG"
-        lgnn_name += str(cfg.gnn.layers_mp)
         lgnn_name += ".v"+str(cfg.gnn.lgvariant)
         
     # Compose wandb run name.

@@ -32,7 +32,7 @@ train:
   eval_period: 1
   ckpt_period: 100
 model:
-  type: custom_gnn
+  type: gnn
   loss_fun: cross_entropy
   graph_pooling: mean
 gnn:
@@ -47,7 +47,6 @@ gnn:
   dropout: 0.0
   agg: mean
   normalize_adj: False
-  linegraph: True
 optim:
   optimizer: adamW
   weight_decay: 0.0
