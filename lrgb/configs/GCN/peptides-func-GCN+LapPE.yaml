@@ -32,7 +32,7 @@ train:
   eval_period: 1
   ckpt_period: 100
 model:
-  type: gnn
+  type: custom_gnn
   loss_fun: cross_entropy
   graph_pooling: mean
 gnn:

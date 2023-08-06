@@ -12,7 +12,10 @@ dataset:
   node_encoder: True
   node_encoder_name: Atom
   node_encoder_bn: False
-  edge_encoder: False
+  edge_encoder: True
+  edge_encoder_name: Bond
+  edge_encoder_bn: False
+train:
 train:
   mode: custom
   batch_size: 64
