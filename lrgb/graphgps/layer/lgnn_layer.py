@@ -145,3 +145,11 @@ class linegraph2graph(nn.Module):
         batch.edge_index = batch.org_edge_index
         
         return batch
+    
+
+class linegraphEncoder(nn.Module):
+    def __init__(self, dim_in):
+        self.dim_in = dim_in
+    
+    def forward(self, batch):
+        return batch

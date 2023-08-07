@@ -459,6 +459,8 @@ def preformat_Peptides(dataset_dir, name):
         # Load locally to avoid RDKit dependency until necessary.
         from graphgps.loader.dataset.peptides_functional import \
             PeptidesFunctionalDataset
+        from graphgps.loader.dataset.peptides_functionallg import \
+            PeptidesFunctionalLGDataset
         from graphgps.loader.dataset.peptides_structural import \
             PeptidesStructuralDataset
     except Exception as e:
@@ -469,6 +471,8 @@ def preformat_Peptides(dataset_dir, name):
     dataset_type = name.split('-', 1)[1]
     if dataset_type == 'functional':
         dataset = PeptidesFunctionalDataset(dataset_dir)
+    elif dataset_type == 'functionallg':
+        dataset = PeptidesFunctionalLGDataset(dataset_dir)
     elif dataset_type == 'structural':
         dataset = PeptidesStructuralDataset(dataset_dir)
     s_dict = dataset.get_idx_split()

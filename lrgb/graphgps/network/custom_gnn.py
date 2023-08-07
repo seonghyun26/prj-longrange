@@ -12,7 +12,7 @@ from graphgps.layer.gat_conv_layer import GATConvLayer
 from graphgps.layer.mlp_layer import MLPLayer
 from graphgps.layer.gcn_layer import GCNConvLayer
 from graphgps.layer.gat_layer import GATConvLayer
-from graphgps.layer.lgnn_layer import graph2linegraph, linegraph2graph
+from graphgps.layer.lgnn_layer import graph2linegraph, linegraph2graph, linegraphEncoder
 
 class CustomGNN(torch.nn.Module):
     """
@@ -22,6 +22,7 @@ class CustomGNN(torch.nn.Module):
 
     def __init__(self, dim_in, dim_out):
         super().__init__()
+        # if cfg.gnn.lgvariant != 10:
         self.encoder = FeatureEncoder(dim_in)
         dim_in = self.encoder.dim_in
 
@@ -41,6 +42,15 @@ class CustomGNN(torch.nn.Module):
             if cfg.gnn.lgvariant == -1:
                 print("wrong cfg in cfg.gnn.lgvariant. Check again")
                 assert()
+            elif cfg.gnn.lgvariant == 10:
+                print("FLAG - LG dataset")
+                for _ in range(cfg.gnn.layers_mp):
+                    layers.append(conv_model(
+                        dim_in,
+                        dim_in,
+                        dropout=cfg.gnn.dropout,
+                        residual=cfg.gnn.residual,
+                    ))
             else:
                 print("FLAG - LGNN")
                 layers.append(graph2linegraph(cfg.gnn.lgvariant))
