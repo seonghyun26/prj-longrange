@@ -14,7 +14,6 @@ from graphgps.encoder.type_dict_encoder import TypeDictNodeEncoder
 from graphgps.encoder.linear_node_encoder import LinearNodeEncoder
 from graphgps.encoder.equivstable_laplace_pos_encoder import EquivStableLapPENodeEncoder
 
-
 def concat_node_encoders(encoder_classes, pe_enc_names):
     """
     A factory that creates a new Encoder class that concatenates functionality
@@ -49,7 +48,7 @@ def concat_node_encoders(encoder_classes, pe_enc_names):
                 enc2_dim_pe = getattr(cfg, f"posenc_{self.enc2_name}").dim_pe
             
                 self.encoder1 = self.enc1_cls(dim_emb - enc2_dim_pe)
-                self.encoder2 = self.enc2_cls(dim_emb, expand_x=False)
+                self.encoder2 = self.enc2_cls(dim_emb, expand_x=True)
 
         def forward(self, batch):
             batch = self.encoder1(batch)
@@ -104,7 +103,9 @@ ds_encs = {'Atom': AtomEncoder,
            'PPANode': PPANodeEncoder,
            'TypeDictNode': TypeDictNodeEncoder,
            'VOCNode': VOCNodeEncoder,
-           'LinearNode': LinearNodeEncoder}
+           'LinearNode': LinearNodeEncoder
+        #    'AtomLG':LineGraphNodeEncoder
+           }
 
 # Positional Encoding node encoders.
 pe_encs = {'LapPE': LapPENodeEncoder,
