@@ -461,8 +461,12 @@ def preformat_Peptides(dataset_dir, name):
             PeptidesFunctionalDataset
         from graphgps.loader.dataset.peptides_functionallg import \
             PeptidesFunctionalLGDataset
+        from graphgps.loader.dataset.peptides_functional_gvn import \
+            PeptidesFunctionalLG_GVNDataset
         from graphgps.loader.dataset.peptides_structural import \
             PeptidesStructuralDataset
+        from graphgps.loader.dataset.peptides_structural_lg import \
+            PeptidesStructural_LGDataset
     except Exception as e:
         logging.error('ERROR: Failed to import Peptides dataset class, '
                       'make sure RDKit is installed.')
@@ -473,8 +477,12 @@ def preformat_Peptides(dataset_dir, name):
         dataset = PeptidesFunctionalDataset(dataset_dir)
     elif dataset_type == 'functionallg':
         dataset = PeptidesFunctionalLGDataset(dataset_dir)
+    elif dataset_type == 'functional_gvn':
+        dataset = PeptidesFunctionalLG_GVNDataset(dataset_dir)
     elif dataset_type == 'structural':
         dataset = PeptidesStructuralDataset(dataset_dir)
+    elif dataset_type == 'structural_lg':
+        dataset = PeptidesStructural_LGDataset(dataset_dir)
     s_dict = dataset.get_idx_split()
     dataset.split_idxs = [s_dict[s] for s in ['train', 'val', 'test']]
     return dataset
