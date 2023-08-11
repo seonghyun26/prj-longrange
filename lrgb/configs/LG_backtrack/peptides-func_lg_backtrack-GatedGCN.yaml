@@ -1,32 +1,20 @@
 out_dir: results
-metric_best: mae
-metric_agg: argmin
+metric_best: ap
 wandb:
   use: True
-  project: peptides-struct
+  project: peptides-func
 dataset:
   format: OGB
-  name: peptides-structural
+  name: peptides-functional_lg_backtrack
   task: graph
-  task_type: regression
+  task_type: classification_multilabel
   transductive: False
   node_encoder: True
-  node_encoder_name: Atom
+  node_encoder_name: AtomLG
   node_encoder_bn: False
   edge_encoder: True
-  edge_encoder_name: Bond
+  edge_encoder_name: BondLG
   edge_encoder_bn: False
-posenc_LapPE:
-  enable: True
-  eigen:
-    laplacian_norm: sym
-    eigvec_norm: L2
-    max_freqs: 10
-  model: DeepSet  # Transformer
-  dim_pe: 16
-  layers: 2
-  n_heads: 4  # Only used when `posenc.model: Transformer`
-  raw_norm_type: none
 train:
   mode: custom
   batch_size: 64
@@ -34,7 +22,7 @@ train:
   ckpt_period: 100
 model:
   type: custom_gnn
-  loss_fun: l1
+  loss_fun: cross_entropy
   graph_pooling: mean
 gnn:
   layers_pre_mp: 0
@@ -45,6 +33,8 @@ gnn:
   act: relu
   residual: True
   dropout: 0.0
+  linegraph: True
+  lgvariant: 99
 optim:
   optimizer: adamW
   weight_decay: 0.0

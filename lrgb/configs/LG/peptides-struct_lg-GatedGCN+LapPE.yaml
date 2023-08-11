@@ -45,6 +45,8 @@ gnn:
   act: relu
   residual: True
   dropout: 0.0
+  linegraph: True
+  lgvariant: 10
 optim:
   optimizer: adamW
   weight_decay: 0.0

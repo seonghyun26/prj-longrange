@@ -1,8 +1,9 @@
-DATASET="peptides-funclg"
+cd ../
+DATASET="peptides-func_lg_backtrack"
 model=$1
-for i in 5 17 20 30
+for i in 5 10 15 25
 do
-  python main.py --cfg configs/LG/$DATASET-$model.yaml \
+  python main.py --cfg configs/LG_backtrack/$DATASET-$model.yaml \
     wandb.use True \
     wandb.project lrgb \
     gnn.layers_mp $i \

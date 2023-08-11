@@ -22,7 +22,6 @@ class CustomGNN(torch.nn.Module):
 
     def __init__(self, dim_in, dim_out):
         super().__init__()
-        # if cfg.gnn.lgvariant != 10:
         self.encoder = FeatureEncoder(dim_in)
         dim_in = self.encoder.dim_in
 
@@ -42,7 +41,7 @@ class CustomGNN(torch.nn.Module):
             if cfg.gnn.lgvariant == -1:
                 print("wrong cfg in cfg.gnn.lgvariant. Check again")
                 assert()
-            elif cfg.gnn.lgvariant == 10:
+            elif cfg.gnn.lgvariant >= 10:
                 print("FLAG - LG dataset")
                 for _ in range(cfg.gnn.layers_mp):
                     layers.append(conv_model(
@@ -74,7 +73,7 @@ class CustomGNN(torch.nn.Module):
         self.gnn_layers = torch.nn.Sequential(*layers)
 
         GNNHead = register.head_dict[cfg.gnn.head]
-        if cfg.gnn.linegraph and (cfg.gnn.lgvariant == 7 or cfg.gnn.lgvariant == 10):
+        if cfg.gnn.linegraph and (cfg.gnn.lgvariant == 7 or cfg.gnn.lgvariant >= 10):
             self.post_mp = GNNHead(dim_in=cfg.gnn.dim_inner*2, dim_out=dim_out)
         else:
             self.post_mp = GNNHead(dim_in=cfg.gnn.dim_inner, dim_out=dim_out)
