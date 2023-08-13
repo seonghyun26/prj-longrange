@@ -1,12 +1,15 @@
+cd ../
 DATASET="peptides-funclg"
 model=$1
-for i in 10 15 17 20 25
+for i in 15 17
 do
-  python main.py --cfg configs/LG/$DATASET-GatedGCN+LapPE.yaml \
+  python main.py --repeat 3 \
+    --cfg configs/LG/$DATASET-GatedGCN+LapPE.yaml \
     wandb.use True \
     wandb.project lrgb \
     gnn.layers_mp $i \
     optim.max_epoch 300 \
-    gnn.residual False
+    gnn.residual False \
+    seed 1
   sleep 10
 done

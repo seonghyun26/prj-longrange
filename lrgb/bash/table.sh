@@ -1,3 +1,4 @@
+cd ../
 DATASET="peptides-func"
 model=$1
 for i in 30

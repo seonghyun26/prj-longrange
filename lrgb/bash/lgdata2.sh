@@ -1,6 +1,7 @@
+cd ../
 DATASET="peptides-funclg"
 model=$1
-for i in 10 15 25
+for i in 5 17 20 30
 do
   python main.py --cfg configs/LG/$DATASET-$model.yaml \
     wandb.use True \
