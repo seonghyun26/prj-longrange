@@ -465,6 +465,8 @@ def preformat_Peptides(dataset_dir, name):
             PeptidesFunctional_LG_backtrack_Dataset
         from graphgps.loader.dataset.peptides_functional_lg_vn import \
             PeptidesFunctional_LG_VN_Dataset
+        from graphgps.loader.dataset.peptides_functional_lg_bb import \
+            PeptidesFunctional_LG_BB_Dataset
         from graphgps.loader.dataset.peptides_structural import \
             PeptidesStructuralDataset
         from graphgps.loader.dataset.peptides_structural_lg import \
@@ -483,6 +485,8 @@ def preformat_Peptides(dataset_dir, name):
         dataset = PeptidesFunctional_LG_backtrack_Dataset(dataset_dir)
     elif dataset_type == 'functional_lg_vn':
         dataset = PeptidesFunctional_LG_VN_Dataset(dataset_dir)
+    elif dataset_type == 'functional_lg_bb':
+        dataset = PeptidesFunctional_LG_BB_Dataset(dataset_dir)
     elif dataset_type == 'structural':
         dataset = PeptidesStructuralDataset(dataset_dir)
     elif dataset_type == 'structural_lg':

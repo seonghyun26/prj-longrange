@@ -7,7 +7,7 @@ do
     wandb.use True \
     wandb.project lrgb \
     gnn.layers_mp $i \
-    optim.max_epoch 100 \
+    optim.max_epoch 200 \
     gnn.residual False \
     train.batch_size 32
   sleep 10

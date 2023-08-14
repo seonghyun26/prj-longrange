@@ -1,7 +1,7 @@
 cd ../
 DATASET="peptides-funclg"
 model=$1
-for i in 15 17
+for i in 20
 do
   python main.py --repeat 3 \
     --cfg configs/LG/$DATASET-GatedGCN+LapPE.yaml \
