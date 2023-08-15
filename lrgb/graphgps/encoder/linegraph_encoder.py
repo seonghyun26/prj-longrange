@@ -22,7 +22,7 @@ class LineGraphNodeEncoder(torch.nn.Module):
             torch.nn.init.xavier_uniform_(emb.weight.data)
             self.atom_embedding_list.append(emb)
         for i, dim in enumerate(get_bond_feature_dims()):
-            emb = torch.nn.Embedding(dim, emb_dim)
+            emb = torch.nn.Embedding(dim+1, emb_dim)
             torch.nn.init.xavier_uniform_(emb.weight.data)
             self.bond_embedding_list.append(emb)
 
@@ -46,6 +46,43 @@ class LineGraphNodeEncoder(torch.nn.Module):
 register_node_encoder('AtomLG', LineGraphNodeEncoder)
 
 
+class LineGrapBBhNodeEncoder(torch.nn.Module):
+    def __init__(self, emb_dim, num_classes=None):
+        super().__init__()
+
+        from ogb.utils.features import get_atom_feature_dims, get_bond_feature_dims
+
+        self.atom_embedding_list = torch.nn.ModuleList()
+        self.bond_embedding_list = torch.nn.ModuleList()
+        
+        for i, dim in enumerate(get_atom_feature_dims()):
+            emb = torch.nn.Embedding(dim, emb_dim)
+            torch.nn.init.xavier_uniform_(emb.weight.data)
+            self.atom_embedding_list.append(emb)
+        for i, dim in enumerate(get_bond_feature_dims()):
+            emb = torch.nn.Embedding(dim+1, emb_dim)
+            torch.nn.init.xavier_uniform_(emb.weight.data)
+            self.bond_embedding_list.append(emb)
+
+    def forward(self, batch):
+        edge_encoded_features = 0
+        node_encoded_features1 = 0
+        node_encoded_features2 = 0
+
+        for EdgeIdx in range(3):
+            edge_encoded_features += self.bond_embedding_list[EdgeIdx](batch.x[:, EdgeIdx])
+        for AtomIdx in range(3, 12):
+            node_encoded_features1 += self.atom_embedding_list[AtomIdx-3](batch.x[:, AtomIdx])
+        for AtomIdx in range(12, 21):
+            node_encoded_features2 += self.atom_embedding_list[AtomIdx-12](batch.x[:, AtomIdx])
+        
+        edge_encoded_features = edge_encoded_features.repeat(1,2)
+        node_encoded_features = torch.cat([node_encoded_features1, node_encoded_features2], dim=1)
+        batch.x = edge_encoded_features + node_encoded_features
+        return batch
+
+register_node_encoder('AtomLGBB', LineGrapBBhNodeEncoder)
+
 class LineGraphLapPENodeEncoder(torch.nn.Module):
     def __init__(self, emb_dim, num_classes=None):
         super().__init__()
@@ -63,7 +100,7 @@ class LineGraphLapPENodeEncoder(torch.nn.Module):
             torch.nn.init.xavier_uniform_(emb.weight.data)
             self.atom_embedding_list.append(emb)
         for i, dim in enumerate(get_bond_feature_dims()):
-            emb = torch.nn.Embedding(dim, emb_dim)
+            emb = torch.nn.Embedding(dim+1, emb_dim)
             torch.nn.init.xavier_uniform_(emb.weight.data)
             self.bond_embedding_list.append(emb)
         
@@ -148,7 +185,7 @@ class LineGraphEdgeEncoder(torch.nn.Module):
             torch.nn.init.xavier_uniform_(emb.weight.data)
             self.atom_embedding_list.append(emb)
         for i, dim in enumerate(get_bond_feature_dims()):
-            emb = torch.nn.Embedding(dim, emb_dim)
+            emb = torch.nn.Embedding(dim+1, emb_dim)
             torch.nn.init.xavier_uniform_(emb.weight.data)
             self.bond_embedding_list.append(emb)
     
@@ -169,6 +206,43 @@ class LineGraphEdgeEncoder(torch.nn.Module):
         return batch
 
 register_edge_encoder('BondLG', LineGraphEdgeEncoder)
+
+class LineGraphBBEdgeEncoder(torch.nn.Module):
+    def __init__(self, emb_dim):
+        super().__init__()
+        
+        from ogb.utils.features import get_atom_feature_dims, get_bond_feature_dims
+
+        self.atom_embedding_list = torch.nn.ModuleList()
+        self.bond_embedding_list = torch.nn.ModuleList()
+        
+        for i, dim in enumerate(get_atom_feature_dims()):
+            emb = torch.nn.Embedding(dim, emb_dim)
+            torch.nn.init.xavier_uniform_(emb.weight.data)
+            self.atom_embedding_list.append(emb)
+        for i, dim in enumerate(get_bond_feature_dims()):
+            emb = torch.nn.Embedding(dim+1, emb_dim)
+            torch.nn.init.xavier_uniform_(emb.weight.data)
+            self.bond_embedding_list.append(emb)
+    
+    def forward(self, batch):
+        node_encoded_features = 0
+        edge_encoded_features1 = 0
+        edge_encoded_features2 = 0
+        for AtomIdx in range(9):
+            node_encoded_features += self.atom_embedding_list[AtomIdx](batch.edge_attr[:, AtomIdx])
+        for edgeIdx in range(9, 12):
+            edge_encoded_features1 += self.bond_embedding_list[edgeIdx-9](batch.edge_attr[:, edgeIdx])
+        for edgeIdx in range(12, 15):
+            edge_encoded_features2 += self.bond_embedding_list[edgeIdx-12](batch.edge_attr[:, edgeIdx])
+
+        node_encoded_features = node_encoded_features.repeat(1,2)
+        edge_encoded_features = torch.cat([edge_encoded_features1, edge_encoded_features2], dim=1)
+        batch.edge_attr = node_encoded_features + edge_encoded_features
+        return batch
+
+register_edge_encoder('BondLGBB', LineGraphBBEdgeEncoder)
+
 
 
 ds_encs = {'AtomLG':LineGraphNodeEncoder}
