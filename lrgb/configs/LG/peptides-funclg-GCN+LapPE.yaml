@@ -5,7 +5,7 @@ wandb:
   project: peptides-func
 dataset:
   format: OGB
-  name: peptides-functional
+  name: peptides-functional_lg
   task: graph
   task_type: classification_multilabel
   transductive: False

@@ -4,6 +4,7 @@ wandb:
   use: True
   project: peptides-func
 dataset:
+  dir: datasets
   format: OGB
   name: peptides-functional
   task: graph
@@ -12,7 +13,9 @@ dataset:
   node_encoder: True
   node_encoder_name: Atom+LapPE
   node_encoder_bn: False
-  edge_encoder: False
+  edge_encoder: True
+  edge_encoder_name: Bond
+  edge_encoder_bn: False
 posenc_LapPE:
   dim_pe: 16
   eigen:
@@ -23,8 +26,6 @@ posenc_LapPE:
   layers: 2
   model: DeepSet
   n_heads: 4
-  pass_as_var: false
-  post_layers: 0
   raw_norm_type: none
 train:
   mode: custom
@@ -41,12 +42,9 @@ gnn:
   layers_post_mp: 1
   dim_inner: 130
   layer_type: gcnconv
-  stage_type: stack
-  batchnorm: True
   act: relu
+  residual: True
   dropout: 0.0
-  agg: mean
-  normalize_adj: False
 optim:
   optimizer: adamW
   weight_decay: 0.0

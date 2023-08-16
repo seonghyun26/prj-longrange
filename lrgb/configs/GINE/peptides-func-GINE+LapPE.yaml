@@ -1,20 +1,32 @@
 out_dir: results
 metric_best: ap
 wandb:
-  use: True
+  use: False
   project: peptides-func
 dataset:
+  dir: datasets
   format: OGB
   name: peptides-functional
   task: graph
   task_type: classification_multilabel
   transductive: False
   node_encoder: True
-  node_encoder_name: Atom
+  node_encoder_name: Atom+LapPE
   node_encoder_bn: False
   edge_encoder: True
   edge_encoder_name: Bond
   edge_encoder_bn: False
+posenc_LapPE:
+  enable: True
+  dim_pe: 16
+  eigen:
+    eigvec_norm: L2
+    laplacian_norm: sym
+    max_freqs: 10
+  layers: 2
+  model: DeepSet
+  n_heads: 4
+  raw_norm_type: none
 train:
   mode: custom
   batch_size: 64

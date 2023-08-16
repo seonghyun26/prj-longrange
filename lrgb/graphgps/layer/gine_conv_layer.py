@@ -109,13 +109,6 @@ class GINEConvLayer(nn.Module):
         x_in = batch.x
 
         batch.x = self.model(batch.x, batch.edge_index, batch.edge_attr)
-        
-        if self.lgvariant == 6:
-            alpha = 0.7
-            tempx = torch.empty_like(batch.x)
-            tempx[::2] = batch.x[1::2]
-            tempx[1::2] = batch.x[::2]
-            batch.x = alpha * batch.x + (1 - alpha) * tempx
 
         batch.x = F.relu(batch.x)
         batch.x = F.dropout(batch.x, p=self.dropout, training=self.training)

@@ -13,7 +13,7 @@ from torch_geometric.data import InMemoryDataset
 from tqdm import tqdm
 
 
-class PeptidesFunctionalLGDataset(InMemoryDataset):
+class PeptidesFunctional_LG_Dataset(InMemoryDataset):
     def __init__(self, root='datasets', smiles2graph=smiles2graph,
                  transform=None, pre_transform=None):
         """
@@ -40,7 +40,7 @@ class PeptidesFunctionalLGDataset(InMemoryDataset):
 
         self.original_root = root
         self.smiles2graph = smiles2graph
-        self.folder = osp.join(root, 'peptides-functional-lg')
+        self.folder = osp.join(root, 'peptides-functional_lg')
 
         self.url = 'https://www.dropbox.com/s/ol2v01usvaxbsr8/peptide_multi_class_dataset.csv.gz?dl=1'
         self.version = '701eb743e899f4d793f0e13c8fa5a1b4'  # MD5 hash of the intended dataset file

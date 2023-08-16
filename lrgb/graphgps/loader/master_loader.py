@@ -459,8 +459,8 @@ def preformat_Peptides(dataset_dir, name):
         # Load locally to avoid RDKit dependency until necessary.
         from graphgps.loader.dataset.peptides_functional import \
             PeptidesFunctionalDataset
-        from graphgps.loader.dataset.peptides_functionallg import \
-            PeptidesFunctionalLGDataset
+        from graphgps.loader.dataset.peptides_functional_lg import \
+            PeptidesFunctional_LG_Dataset
         from graphgps.loader.dataset.peptides_functional_lg_backtrack import \
             PeptidesFunctional_LG_backtrack_Dataset
         from graphgps.loader.dataset.peptides_functional_lg_vn import \
@@ -479,8 +479,8 @@ def preformat_Peptides(dataset_dir, name):
     dataset_type = name.split('-', 1)[1]
     if dataset_type == 'functional':
         dataset = PeptidesFunctionalDataset(dataset_dir)
-    elif dataset_type == 'functionallg':
-        dataset = PeptidesFunctionalLGDataset(dataset_dir)
+    elif dataset_type == 'functional_lg':
+        dataset = PeptidesFunctional_LG_Dataset(dataset_dir)
     elif dataset_type == 'functional_lg_backtrack':
         dataset = PeptidesFunctional_LG_backtrack_Dataset(dataset_dir)
     elif dataset_type == 'functional_lg_vn':
