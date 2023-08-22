@@ -1,13 +1,14 @@
 out_dir: results
-metric_best: ap
+metric_best: mae
+metric_agg: argmin
 wandb:
   use: True
-  project: peptides-func
+  project: peptides-struct
 dataset:
   format: OGB
-  name: peptides-functional_lg
+  name: peptides-structural_lg
   task: graph
-  task_type: classification_multilabel
+  task_type: regression
   transductive: False
   node_encoder: True
   node_encoder_name: AtomLG
@@ -22,19 +23,21 @@ train:
   ckpt_period: 100
 model:
   type: custom_gnn
-  loss_fun: cross_entropy
+  loss_fun: l1
   graph_pooling: mean
 gnn:
   layers_pre_mp: 0
   layers_mp: 5
   layers_post_mp: 1
-  dim_inner: 138
-  layer_type: gatedgcnconv
+  dim_inner: 300
+  layer_type: gcniiconv
+  stage_type: stack
+  batchnorm: True
   act: relu
   residual: True
   dropout: 0.0
-  linegraph: True
-  lgvariant: 10
+  agg: add
+  normalize_adj: False
 optim:
   optimizer: adamW
   weight_decay: 0.0

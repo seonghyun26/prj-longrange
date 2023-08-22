@@ -12,7 +12,9 @@ from graphgps.layer.gat_conv_layer import GATConvLayer
 from graphgps.layer.mlp_layer import MLPLayer
 from graphgps.layer.gcn_layer import GCNConvLayer
 from graphgps.layer.gat_layer import GATConvLayer
-from graphgps.layer.lgnn_layer import graph2linegraph, linegraph2graph, linegraphEncoder
+from graphgps.layer.lgnn_layer import graph2linegraph, linegraph2graph, lg2graphNode
+
+from torch_scatter import scatter
 
 class CustomGNN(torch.nn.Module):
     """
@@ -38,30 +40,28 @@ class CustomGNN(torch.nn.Module):
         layers = []
             
         if cfg.gnn.linegraph:
-            if cfg.gnn.lgvariant == -1:
-                print("wrong cfg in cfg.gnn.lgvariant. Check again")
-                assert()
-            elif cfg.gnn.lgvariant >= 10:
-                print("FLAG - LG dataset")
+            if cfg.gnn.lgvariant >= 12:
+                print("FLAG - LG dataset2")
                 for _ in range(cfg.gnn.layers_mp):
                     layers.append(conv_model(
-                        dim_in*2,
-                        dim_in*2,
+                        dim_in,
+                        dim_in,
                         dropout=cfg.gnn.dropout,
                         residual=cfg.gnn.residual,
                     ))
+            # elif cfg.gnn.lgvariant >= 10:
+            #     print("FLAG - LG dataset")
+            #     for _ in range(cfg.gnn.layers_mp):
+            #         layers.append(conv_model(
+            #             dim_in*2,
+            #             dim_in*2,
+            #             dropout=cfg.gnn.dropout,
+            #             residual=cfg.gnn.residual,
+            #         ))
             else:
-                print("FLAG - LGNN")
-                layers.append(graph2linegraph(cfg.gnn.lgvariant))
-                for _ in range(cfg.gnn.layers_mp):
-                    layers.append(conv_model(
-                        dim_in*2,
-                        dim_in*2,
-                        dropout=cfg.gnn.dropout,
-                        residual=cfg.gnn.residual,
-                    ))
-                if cfg.gnn.lgvariant != 7:
-                    layers.append(linegraph2graph(cfg.gnn.lgvariant))
+                assert("Deprecated version of linegraph")
+            if cfg.gnn.lgvariant == 20:
+                layers.append(lg2graphNode())
         else:
             for _ in range(cfg.gnn.layers_mp):
                 layers.append(conv_model(
@@ -73,11 +73,10 @@ class CustomGNN(torch.nn.Module):
         self.gnn_layers = torch.nn.Sequential(*layers)
 
         GNNHead = register.head_dict[cfg.gnn.head]
-        if cfg.gnn.linegraph and (cfg.gnn.lgvariant == 7 or cfg.gnn.lgvariant >= 10):
-            self.post_mp = GNNHead(dim_in=cfg.gnn.dim_inner*2, dim_out=dim_out)
-        else:
-            self.post_mp = GNNHead(dim_in=cfg.gnn.dim_inner, dim_out=dim_out)
-        # self.post_mp = GNNHead(dim_in=cfg.gnn.dim_inner, dim_out=dim_out)
+        # if cfg.gnn.linegraph and cfg.gnn.lgvariant == 10:
+        #     self.post_mp = GNNHead(dim_in=cfg.gnn.dim_inner*2, dim_out=dim_out)
+        # else:
+        self.post_mp = GNNHead(dim_in=cfg.gnn.dim_inner, dim_out=dim_out)
             
 
     def build_conv_model(self, model_type):
@@ -97,12 +96,20 @@ class CustomGNN(torch.nn.Module):
             raise ValueError("Model {} unavailable".format(model_type))
 
     def forward(self, batch):
-        for module in self.children():
+        for idx, module in enumerate(self.children()):
             if self.model_type == 'gcniiconv':
                 batch.x0 = batch.x # gcniiconv needs x0 for each layer
                 batch = module(batch)
             else:
                 batch = module(batch)
+                if cfg.gnn.lgvariant == 13 and idx == 1 :
+                    x_size = batch.x_size
+                    mask = torch.repeat_interleave(torch.arange(0,x_size.shape[0]).unsqueeze(1).to(batch.y.device), x_size)
+                    graphMeanPooling = scatter(batch.x, mask, dim=0, reduce="mean")
+                    graphScatter = torch.repeat_interleave(graphMeanPooling, x_size, dim=0)
+                    alpha = 0.9
+                    assert(alpha <= 1 and alpha >= 0)
+                    batch.x = alpha * batch.x + (1-alpha) * graphScatter
         return batch
 
 register_network('custom_gnn', CustomGNN)

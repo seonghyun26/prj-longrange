@@ -11,7 +11,7 @@ def custom_gnn_cfg(cfg):
     # Convert graph to line grpah before GNN layers.
     cfg.gnn.linegraph = False
     # line graph variant version
-    cfg.gnn.lgvariant = 1
+    cfg.gnn.lgvariant = 12
 
 
 register_config('custom_gnn', custom_gnn_cfg)

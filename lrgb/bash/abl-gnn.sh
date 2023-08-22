@@ -1,5 +1,5 @@
 cd ../
-DATASET="peptides-funclg"
+DATASET="peptides-func"
 model=$1
 
 for layer in "GCN" "GCNII" "GINE"
@@ -15,13 +15,11 @@ do
   # sleep 10
 
   python main.py --repeat 3 \
-    --cfg configs/LG/$DATASET-$layer.yaml \
+    --cfg configs/$layer/$DATASET-$layer+LapPE.yaml \
     wandb.use True \
     wandb.project lrgb \
-    optim.max_epoch 250 \
+    optim.max_epoch 400 \
     gnn.layers_mp 15 \
-    gnn.lgvariant 10 \
     gnn.residual False
-
   sleep 10
 done

@@ -16,7 +16,7 @@ class LapPENodeEncoder(torch.nn.Module):
         expand_x: Expand node features `x` from dim_in to (dim_emb - dim_pe)
     """
 
-    def __init__(self, dim_emb, expand_x=True):
+    def __init__(self, dim_emb, expand_x=False):
         super().__init__()
         dim_in = cfg.share.dim_in  # Expected original input node features dim
 
@@ -129,10 +129,13 @@ class LapPENodeEncoder(torch.nn.Module):
             pos_enc = self.post_mlp(pos_enc)  # (Num nodes) x dim_pe
 
         # Expand node features if needed
-        if self.expand_x:
-            h = self.linear_x(batch.x)
-        else:
-            h = batch.x
+        # if self.expand_x:
+        #     h = self.linear_x(batch.x)
+        # else:
+        #     h = batch.x
+        
+        h = batch.x
+        
         # Concatenate final PEs to input embedding
         batch.x = torch.cat((h, pos_enc), 1)
         # Keep PE also separate in a variable (e.g. for skip connections to input)

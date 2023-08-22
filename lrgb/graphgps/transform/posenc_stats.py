@@ -32,7 +32,7 @@ def compute_posenc_stats(data, pe_types, is_undirected, cfg):
     """
     # Verify PE types.
     for t in pe_types:
-        if t not in ['LapPE', 'EquivStableLapPE', 'SignNet', 'RWSE', 'HKdiagSE', 'HKfullPE', 'ElstaticSE']:
+        if t not in ['LapPE', 'EquivStableLapPE', 'SignNet', 'RWSE', 'HKdiagSE', 'HKfullPE', 'ElstaticSE', 'MagLapPE']:
             raise ValueError(f"Unexpected PE stats selection {t} in {pe_types}")
 
     # Basic preprocessing of the input graph.
@@ -134,6 +134,61 @@ def compute_posenc_stats(data, pe_types, is_undirected, cfg):
         elstatic = get_electrostatic_function_encoding(undir_edge_index, N)
         data.pestat_ElstaticSE = elstatic
 
+    if 'MagLapPE' in pe_types:
+        L = to_scipy_sparse_matrix(
+            *get_laplacian(
+                undir_edge_index,
+                normalization=laplacian_norm_type,
+                num_nodes=N
+            )
+        )
+        
+        # TODO: Code for MagLapPE
+        adj = np.zeros(int(padded_nodes_size * padded_nodes_size), dtype=np.float64)
+        linear_index = receivers + (senders * padded_nodes_size).astype(senders.dtype)
+        adj[linear_index] = edges_padding_mask.astype(adj.dtype)
+        adj = adj.reshape(padded_nodes_size, padded_nodes_size)
+        adj = np.where(adj > 1, 1, adj)
+
+        symmetric_adj = adj + adj.T
+        symmetric_adj = np.where((adj != 0) & (adj.T != 0), symmetric_adj / 2, symmetric_adj)
+        symmetric_deg = symmetric_adj.sum(-2)
+
+        if not q_absolute:
+            m_imag = (adj != adj.T).sum() / 2
+            m_imag = min(m_imag, n_node[0])
+            q = q / (m_imag if m_imag > 0 else 1)
+
+        theta = 1j * 2 * np.pi * q * (adj - adj.T)
+
+        if use_symmetric_norm:
+            inv_deg = np.zeros((padded_nodes_size, padded_nodes_size), dtype=np.float64)
+            np.fill_diagonal(
+                inv_deg, 1. / np.sqrt(np.where(symmetric_deg < 1, 1, symmetric_deg)))
+            eye = np.eye(padded_nodes_size)
+            inv_deg = inv_deg.astype(adj.dtype)
+            deg = inv_deg @ symmetric_adj.astype(adj.dtype) @ inv_deg
+            laplacian = eye - deg * np.exp(theta)
+
+            mask = np.arange(padded_nodes_size) < n_node[:1]
+            mask = np.expand_dims(mask, -1) & np.expand_dims(mask, 0)
+            laplacian = mask.astype(adj.dtype) * laplacian
+        else:
+            deg = np.zeros((padded_nodes_size, padded_nodes_size), dtype=np.float64)
+            np.fill_diagonal(deg, symmetric_deg)
+            laplacian = deg - symmetric_adj * np.exp(theta)
+
+        eigenvalues, eigenvectors = np.linalg.eigh(laplacian)
+        eigenvalues = eigenvalues[..., k_excl:k_excl + k]
+        eigenvectors = eigenvectors[..., k_excl:k_excl + k]
+        
+        evals, evects = np.linalg.eigh(L.toarray())
+        max_freqs=cfg.posenc_LapPE.eigen.max_freqs
+        eigvec_norm=cfg.posenc_LapPE.eigen.eigvec_norm
+
+        evals, evects = np.linalg.eigh(L.toarray())
+        data.EigVals, data.EigVecs = eigenvalues.real, eigenvectors, laplacian
+    
     return data
 
 

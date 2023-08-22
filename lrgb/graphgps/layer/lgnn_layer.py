@@ -146,10 +146,40 @@ class linegraph2graph(nn.Module):
         
         return batch
     
-
-class linegraphEncoder(nn.Module):
-    def __init__(self, dim_in):
-        self.dim_in = dim_in
+class lg2graphNode(nn.Module):
+    def __init__(self):
+        super().__init__()
+    
+    def zeroPadding(self, tensor1, tensor2):
+        if tensor1.shape[0] > tensor2.shape[0]:
+            zeros = torch.zeros(tensor1.shape[0] - tensor2.shape[0], tensor1.shape[1]).to(tensor1.device)
+            tensor2 = torch.cat([tensor2, zeros])
+        else:
+            zeros = torch.zeros(tensor2.shape[0] - tensor1.shape[0], tensor1.shape[1]).to(tensor1.device)
+            tensor1 = torch.cat([tensor1, zeros])
+            
+        return tensor1, tensor2
     
     def forward(self, batch):
+        # Recover node feature
+        mask = torch.cumsum(torch.cat([torch.zeros(1).to(batch.x.device), batch.org_graph_size]).type(torch.int64)[:-1], dim=0)
+        padding = torch.repeat_interleave(mask, batch.ptr[1:] - batch.ptr[:-1])
+        padded_lg_node_idx = batch.lg_node_idx + padding.repeat(2, 1).T
+        
+        linegraph2graphMapper = padded_lg_node_idx
+        outgoingNode = scatter_mean(batch.x, linegraph2graphMapper[:,0], dim=0)
+        incomingNode = scatter_mean(batch.x, linegraph2graphMapper[:,1], dim=0)
+        
+        if outgoingNode.shape[0] != incomingNode.shape[0]:
+            outgoingNode, incomingNode = self.zeroPadding(outgoingNode, incomingNode)
+        
+        batch.x = incomingNode - outgoingNode
+        
+        del mask
+        del padding
+        del padded_lg_node_idx
+        del linegraph2graphMapper
+        del outgoingNode
+        del incomingNode
+        
         return batch
