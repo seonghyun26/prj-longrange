@@ -106,6 +106,24 @@ def run_loop_settings():
     return run_ids, seeds, split_indices
 
 
+def select_gpu_with_most_free_memory():
+    device_count = torch.cuda.device_count()
+    if device_count == 0:
+        raise RuntimeError("No available GPUs.")
+    
+    selected_gpu = torch.cuda.current_device()
+    largest_free_memory = 0
+    
+    for gpu_id in range(device_count):
+        with torch.cuda.device(gpu_id):
+            free_memory = torch.cuda.memory_stats(gpu_id)["allocated_bytes.all.freed"]
+            if free_memory > largest_free_memory:
+                largest_free_memory = free_memory
+                selected_gpu = gpu_id
+    
+    return selected_gpu
+
+
 if __name__ == '__main__':
     # Load cmd line args
     args = parse_args()
@@ -125,7 +143,11 @@ if __name__ == '__main__':
         cfg.seed = seed
         cfg.run_id = run_id
         seed_everything(cfg.seed)
-        auto_select_device()
+        if cfg.gnn.lgvariant == 20:
+            cfg.device = 7
+            # cfg.device = select_gpu_with_most_free_memory()
+        else:
+            auto_select_device()
         
         if cfg.train.finetune:
             cfg = load_pretrained_model_cfg(cfg)
