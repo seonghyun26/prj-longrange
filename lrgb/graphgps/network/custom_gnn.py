@@ -60,7 +60,7 @@ class CustomGNN(torch.nn.Module):
             #         ))
             else:
                 assert("Deprecated version of linegraph")
-            if cfg.gnn.lgvariant == 20:
+            if cfg.gnn.lgvariant == 20 or cfg.gnn.lgvariant == 21 or cfg.gnn.lgvariant == 22:
                 layers.append(lg2graphNode())
         else:
             for _ in range(cfg.gnn.layers_mp):

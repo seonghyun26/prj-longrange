@@ -6,10 +6,10 @@ length=${#layer[@]}
 
 for ((i=0;i<length;i++))
 do
-  python main.py --cfg configs/LG/vocsp/$DATASET-GCN.yaml \
+  python main.py --cfg configs/LG/vocsp/$DATASET-GCN+LapPE.yaml \
     wandb.use True \
     wandb.project lrgb \
-    gnn.lgvariant 20 \
+    gnn.lgvariant 21 \
     gnn.layers_mp ${layer[i]} \
     gnn.dim_inner ${hdim[i]} \
     optim.max_epoch 400

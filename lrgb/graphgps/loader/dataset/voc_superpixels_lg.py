@@ -8,6 +8,8 @@ from tqdm import tqdm
 from torch_geometric.data import (InMemoryDataset, Data, download_url,
                                   extract_zip)
 
+from graphgps.transform.posenc_stats import compute_posenc_stats
+from torch_geometric.graphgym.config import cfg
 
 class VOCSuperpixels_lg(InMemoryDataset):
     r"""The VOCSuperpixels dataset which contains image superpixels and a semantic segmentation label
@@ -152,7 +154,7 @@ class VOCSuperpixels_lg(InMemoryDataset):
                 y = torch.LongTensor(graph[3])
                 x_size = x.shape[0]
                 
-                # TODO: Convert graph to line graph
+                
                 # NOTE: line graph nodes
                 lg_node_attr_edge = edge_attr
                 lg_node_attr_node = x[edge_index.T]
@@ -188,6 +190,9 @@ class VOCSuperpixels_lg(InMemoryDataset):
                     lg_node_idx=lg_node_idx,
                     org_graph_size=x_size
                 )
+                
+                # TODO: Preprocess LapPE of line graph
+                data = compute_posenc_stats(data, ['LapPE'], False, cfg)
 
                 if self.pre_filter is not None and not self.pre_filter(data):
                     continue

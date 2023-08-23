@@ -1,5 +1,5 @@
 cd ../../
-DATASET=""
+DATASET="vocsuperpixels_lg"
 
-python main.py --cfg configs/LG/vocsp/vocsuperpixels_lg-GCN+LapPE.yaml \
+python main.py --cfg configs/LG/vocsp/$DATASET-GCN.yaml \
   wandb.use False

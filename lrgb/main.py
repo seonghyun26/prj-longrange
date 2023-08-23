@@ -145,6 +145,10 @@ if __name__ == '__main__':
         seed_everything(cfg.seed)
         if cfg.gnn.lgvariant == 20:
             cfg.device = 7
+        elif cfg.gnn.lgvariant == 21:
+            cfg.device = 1
+        elif cfg.gnn.lgvariant == 22:
+            cfg.device = 4
             # cfg.device = select_gpu_with_most_free_memory()
         else:
             auto_select_device()

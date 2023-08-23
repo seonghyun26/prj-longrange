@@ -183,7 +183,7 @@ def load_dataset_master(format, name, dataset_dir):
                     pecfg.kernel.times = list(eval(pecfg.kernel.times_func))
                 logging.info(f"Parsed {pe_name} PE kernel times / steps: "
                              f"{pecfg.kernel.times}")
-    if pe_enabled_list:
+    if pe_enabled_list and pyg_dataset_id != 'VOCSuperpixels_lgt':
         start = time.perf_counter()
         logging.info(f"Precomputing Positional Encoding statistics: "
                      f"{pe_enabled_list} for all graphs...")

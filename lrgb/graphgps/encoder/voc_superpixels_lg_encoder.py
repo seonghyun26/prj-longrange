@@ -91,7 +91,7 @@ class LineGraphVOCNodeLapEncoder(torch.nn.Module):
         return pos_enc
     
     def forward(self, batch):
-        edge_encoded_features = self.edge_encoder(batch.x[:, 1])
+        edge_encoded_features = self.edge_encoder(batch.x[:, 1].unsqueeze(1))
         node_encoded_features1 = self.node_encoder(batch.x[:, 1:15])
         node_encoded_features2 = self.node_encoder(batch.x[:, 15:29])
         
