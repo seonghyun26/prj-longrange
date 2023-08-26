@@ -6,7 +6,7 @@ wandb:
 dataset:
   format: PyG-VOCSuperpixels
   name: edge_wt_only_coord  # Alternative: edge_wt_region_boundary
-  slic_compactness: 10
+  slic_compactness: 30
   task: graph  # Even if VOC is node-level task, this needs to be set as 'graph'
   task_type: classification
   transductive: False
@@ -43,7 +43,7 @@ gnn:
   dim_inner: 144
   layer_type: gineconv
   batchnorm: True
-  residual: True
+  residual: False
   act: relu
   dropout: 0.0
   agg: sum

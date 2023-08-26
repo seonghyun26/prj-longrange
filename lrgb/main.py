@@ -143,9 +143,7 @@ if __name__ == '__main__':
         cfg.seed = seed
         cfg.run_id = run_id
         seed_everything(cfg.seed)
-        if cfg.gnn.lgvariant == 20:
-            cfg.device = 7
-        elif cfg.gnn.lgvariant == 21:
+        if cfg.gnn.lgvariant == 21:
             cfg.device = 1
         elif cfg.gnn.lgvariant == 22:
             cfg.device = 4

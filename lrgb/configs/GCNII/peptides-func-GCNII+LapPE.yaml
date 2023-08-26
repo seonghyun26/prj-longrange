@@ -4,6 +4,7 @@ wandb:
   use: True
   project: peptides-func
 dataset:
+  dir: datasets
   format: OGB
   name: peptides-functional
   task: graph
@@ -25,12 +26,10 @@ posenc_LapPE:
   layers: 2
   model: DeepSet
   n_heads: 4
-  pass_as_var: false
-  post_layers: 0
   raw_norm_type: none
 train:
   mode: custom
-  batch_size: 64
+  batch_size: 128
   eval_period: 1
   ckpt_period: 100
 model:
@@ -49,6 +48,7 @@ gnn:
   dropout: 0.0
   agg: mean
   normalize_adj: False
+  residual: False
   linegraph: False
 optim:
   optimizer: adamW
@@ -59,3 +59,9 @@ optim:
   reduce_factor: 0.5
   schedule_patience: 20
   min_lr: 1e-5
+  lr_decay: 0.1
+  momentum: 0.9
+  steps:
+  - 30
+  - 60
+  - 90

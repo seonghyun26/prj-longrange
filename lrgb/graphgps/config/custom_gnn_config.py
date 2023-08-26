@@ -7,7 +7,7 @@ def custom_gnn_cfg(cfg):
     """
 
     # Use residual connections between the GNN layers.
-    cfg.gnn.residual = False
+    cfg.gnn.residual = True
     # Convert graph to line grpah before GNN layers.
     cfg.gnn.linegraph = False
     # line graph variant version

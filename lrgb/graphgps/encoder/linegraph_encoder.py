@@ -105,6 +105,8 @@ class LineGraphLapPENodeEncoder(torch.nn.Module):
             emb = torch.nn.Embedding(dim+1, emb_dim)
             torch.nn.init.xavier_uniform_(emb.weight.data)
             self.bond_embedding_list.append(emb)
+            
+        # self.gather = nn.Linear(emb_dim*3, emb_dim)
         
         # NOTE: LapPE
         self.linear_x = nn.Linear(emb_dim, emb_dim - dim_pe)
@@ -161,7 +163,9 @@ class LineGraphLapPENodeEncoder(torch.nn.Module):
         # edge_encoded_features = edge_encoded_features.repeat(1,2)
         # node_encoded_features = torch.cat([node_encoded_features1, node_encoded_features2], dim=1)
         # batch.x = edge_encoded_features + node_encoded_features
-        batch.x = edge_encoded_features + node_encoded_features1 - node_encoded_features2
+        
+        batch.x = (edge_encoded_features - node_encoded_features1 + node_encoded_features2)/3
+        # batch.x = self.gather(torch.cat([edge_encoded_features, node_encoded_features1, -1 * node_encoded_features2], dim=1))
         
         # NOTE: LapPE
         pos_enc = self.lapPE(batch)
@@ -196,7 +200,8 @@ class LineGraphMagLapPENodeEncoder(torch.nn.Module):
             torch.nn.init.xavier_uniform_(emb.weight.data)
             self.bond_embedding_list.append(emb)
         
-        self.linear_x = nn.Linear(emb_dim * 2, emb_dim * 2 - dim_pe)
+        # NOTE: LapPE
+        self.linear_x = nn.Linear(emb_dim, emb_dim - dim_pe)
         self.linear_A = nn.Linear(2, dim_pe)
         # pe_encoder
         layers = []
@@ -210,13 +215,19 @@ class LineGraphMagLapPENodeEncoder(torch.nn.Module):
         layers.append(nn.ReLU())
         self.pe_encoder = nn.Sequential(*layers)
         
-    def magLapPE(self, batch):
+    def lapPE(self, batch):
         if not (hasattr(batch, 'EigVals') and hasattr(batch, 'EigVecs')):
             raise ValueError("Precomputed eigen values and vectors are "
                              f"required for {self.__class__.__name__}; "
                              "set config 'posenc_LapPE.enable' to True")
         EigVals = batch.EigVals
         EigVecs = batch.EigVecs
+        
+        if self.training:
+            sign_flip = torch.rand(EigVecs.size(1), device=EigVecs.device)
+            sign_flip[sign_flip >= 0.5] = 1.0
+            sign_flip[sign_flip < 0.5] = -1.0
+            EigVecs = EigVecs * sign_flip.unsqueeze(0)
 
         pos_enc = torch.cat((EigVecs.unsqueeze(2), EigVals), dim=2) # (Num nodes) x (Num Eigenvectors) x 2
         empty_mask = torch.isnan(pos_enc)  # (Num nodes) x (Num Eigenvectors) x 2
@@ -233,6 +244,7 @@ class LineGraphMagLapPENodeEncoder(torch.nn.Module):
         node_encoded_features1 = 0
         node_encoded_features2 = 0
         
+        
         for EdgeIdx in range(3):
             edge_encoded_features += self.bond_embedding_list[EdgeIdx](batch.x[:, EdgeIdx])
         for AtomIdx in range(3, 12):
@@ -240,11 +252,10 @@ class LineGraphMagLapPENodeEncoder(torch.nn.Module):
         for AtomIdx in range(12, 21):
             node_encoded_features2 += self.atom_embedding_list[AtomIdx-12](batch.x[:, AtomIdx])
             
-        edge_encoded_features = edge_encoded_features.repeat(1,2)
-        node_encoded_features = torch.cat([node_encoded_features1, node_encoded_features2], dim=1)
-        batch.x = edge_encoded_features + node_encoded_features
+        batch.x = edge_encoded_features + node_encoded_features1 - node_encoded_features2
         
-        pos_enc = self.magLapPE(batch)
+        # NOTE: LapPE
+        pos_enc = self.lapPE(batch)
         h = self.linear_x(batch.x)
 
         batch.x = torch.cat((h, pos_enc), 1)
@@ -253,6 +264,8 @@ class LineGraphMagLapPENodeEncoder(torch.nn.Module):
         return batch
 
 register_node_encoder("AtomLG+MagLapPE", LineGraphMagLapPENodeEncoder)
+
+
 
 class LineGraphEdgeEncoder(torch.nn.Module):
     def __init__(self, emb_dim):
@@ -271,6 +284,9 @@ class LineGraphEdgeEncoder(torch.nn.Module):
             emb = torch.nn.Embedding(dim+1, emb_dim)
             torch.nn.init.xavier_uniform_(emb.weight.data)
             self.bond_embedding_list.append(emb)
+            
+        # self.gather = nn.Linear(emb_dim*3, emb_dim)
+        
     
     def forward(self, batch):
         node_encoded_features = 0
@@ -286,7 +302,9 @@ class LineGraphEdgeEncoder(torch.nn.Module):
         # node_encoded_features = node_encoded_features.repeat(1,2)
         # edge_encoded_features = torch.cat([edge_encoded_features1, edge_encoded_features2], dim=1)
         # batch.edge_attr = node_encoded_features + edge_encoded_features
-        batch.edge_attr = node_encoded_features + edge_encoded_features1 - edge_encoded_features2
+        batch.edge_attr = (node_encoded_features - edge_encoded_features1 + edge_encoded_features2)/3
+        # batch.edge_attr = self.gather(torch.cat([node_encoded_features, edge_encoded_features1, edge_encoded_features2], dim=1))
+        
         
         return batch
 

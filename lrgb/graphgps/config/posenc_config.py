@@ -13,10 +13,11 @@ def set_cfg_posenc(cfg):
     cfg.posenc_HKdiagSE = CN()
     cfg.posenc_ElstaticSE = CN()
     cfg.posenc_EquivStableLapPE = CN()
+    cfg.posenc_MagLapPE = CN()
 
     # Common arguments to all PE types.
     for name in ['posenc_LapPE', 'posenc_SignNet',
-                 'posenc_RWSE', 'posenc_HKdiagSE', 'posenc_ElstaticSE']:
+                 'posenc_RWSE', 'posenc_HKdiagSE', 'posenc_ElstaticSE', 'posenc_MagLapPE']:
         pecfg = getattr(cfg, name)
 
         # Use extended positional encodings
@@ -51,7 +52,7 @@ def set_cfg_posenc(cfg):
     cfg.posenc_EquivStableLapPE.raw_norm_type = 'none'
     
     # Config for Laplacian Eigen-decomposition for PEs that use it.
-    for name in ['posenc_LapPE', 'posenc_SignNet', 'posenc_EquivStableLapPE']:
+    for name in ['posenc_LapPE', 'posenc_SignNet', 'posenc_EquivStableLapPE', 'posenc_MagLapPE']:
         pecfg = getattr(cfg, name)
         pecfg.eigen = CN()
 
@@ -86,6 +87,11 @@ def set_cfg_posenc(cfg):
 
     # Override default, electrostatic kernel has fixed set of 10 measures.
     cfg.posenc_ElstaticSE.kernel.times_func = 'range(10)'
+    
+    for name in ['posenc_MagLapPE']:
+        pecfg = getattr(cfg, name)
+        
+        pecfg.sign_rotate = True
 
 
 register_config('posenc', set_cfg_posenc)

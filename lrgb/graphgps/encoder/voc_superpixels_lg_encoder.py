@@ -3,6 +3,7 @@ from torch_geometric.graphgym.config import cfg
 from torch_geometric.graphgym.register import (register_node_encoder,
                                                register_edge_encoder)
 
+import torch.nn as nn
 """
 === Description of the VOCSuperpixels dataset === 
 Each graph is a tuple (x, edge_attr, edge_index, y)
@@ -65,6 +66,20 @@ class LineGraphVOCNodeLapEncoder(torch.nn.Module):
         VOC_edge_input_dim = 2 if cfg.dataset.name == 'edge_wt_region_boundary' else 1
         self.node_encoder = torch.nn.Linear(VOC_node_input_dim, emb_dim - dim_pe)
         self.edge_encoder = torch.nn.Linear(VOC_edge_input_dim, emb_dim - dim_pe)
+        
+        # NOTE: LapPE
+        self.linear_A = nn.Linear(2, dim_pe)
+        # pe_encoder
+        layers = []
+        n_layers = 4
+        self.linear_A = nn.Linear(2, 2 * dim_pe)
+        layers.append(nn.ReLU())
+        for _ in range(n_layers - 2):
+            layers.append(nn.Linear(2 * dim_pe, 2 * dim_pe))
+            layers.append(nn.ReLU())
+        layers.append(nn.Linear(2 * dim_pe, dim_pe))
+        layers.append(nn.ReLU())
+        self.pe_encoder = nn.Sequential(*layers)
 
     def lapPE(self, batch):
         if not (hasattr(batch, 'EigVals') and hasattr(batch, 'EigVecs')):
@@ -100,8 +115,7 @@ class LineGraphVOCNodeLapEncoder(torch.nn.Module):
         
         # NOTE: LapPE
         pos_enc = self.lapPE(batch)
-        h = self.linear_x(batch.x)
-        batch.x = torch.cat((h, pos_enc), 1)
+        batch.x = torch.cat((batch.x, pos_enc), 1)
         batch.pe_LapPE = pos_enc
 
         return batch

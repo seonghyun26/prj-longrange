@@ -134,60 +134,52 @@ def compute_posenc_stats(data, pe_types, is_undirected, cfg):
         elstatic = get_electrostatic_function_encoding(undir_edge_index, N)
         data.pestat_ElstaticSE = elstatic
 
+    # NOTE: eigv_magnetic_laplacian_numba function
     if 'MagLapPE' in pe_types:
-        L = to_scipy_sparse_matrix(
-            *get_laplacian(
-                undir_edge_index,
-                normalization=laplacian_norm_type,
-                num_nodes=N
-            )
-        )
         
-        # TODO: Code for MagLapPE
-        adj = np.zeros(int(padded_nodes_size * padded_nodes_size), dtype=np.float64)
-        linear_index = receivers + (senders * padded_nodes_size).astype(senders.dtype)
-        adj[linear_index] = edges_padding_mask.astype(adj.dtype)
-        adj = adj.reshape(padded_nodes_size, padded_nodes_size)
-        adj = np.where(adj > 1, 1, adj)
+        # TODO: change L to magnetc laplacian
+        # L = to_scipy_sparse_matrix(
+        #     *get_laplacian(
+        #         undir_edge_index,
+        #         normalization=laplacian_norm_type,
+        #         num_nodes=N
+        #     )
+        # )
+        # ML = 
+        evals, evects = np.linalg.eigh(L.toarray())
+     
+        N = len(evals)  # Number of nodes, including disconnected nodes.
+        max_freqs = cfg.posenc_LapPE.eigen.max_freqs
+        eigvec_norm = cfg.posenc_LapPE.eigen.eigvec_norm
 
-        symmetric_adj = adj + adj.T
-        symmetric_adj = np.where((adj != 0) & (adj.T != 0), symmetric_adj / 2, symmetric_adj)
-        symmetric_deg = symmetric_adj.sum(-2)
+        # Keep up to the maximum desired number of frequencies.
+        idx = evals.argsort()[:max_freqs]
+        evals, evects = evals[idx], np.real(evects[:, idx])
+        evals = torch.from_numpy(np.real(evals)).clamp_min(0)
 
-        if not q_absolute:
-            m_imag = (adj != adj.T).sum() / 2
-            m_imag = min(m_imag, n_node[0])
-            q = q / (m_imag if m_imag > 0 else 1)
-
-        theta = 1j * 2 * np.pi * q * (adj - adj.T)
-
-        if use_symmetric_norm:
-            inv_deg = np.zeros((padded_nodes_size, padded_nodes_size), dtype=np.float64)
-            np.fill_diagonal(
-                inv_deg, 1. / np.sqrt(np.where(symmetric_deg < 1, 1, symmetric_deg)))
-            eye = np.eye(padded_nodes_size)
-            inv_deg = inv_deg.astype(adj.dtype)
-            deg = inv_deg @ symmetric_adj.astype(adj.dtype) @ inv_deg
-            laplacian = eye - deg * np.exp(theta)
-
-            mask = np.arange(padded_nodes_size) < n_node[:1]
-            mask = np.expand_dims(mask, -1) & np.expand_dims(mask, 0)
-            laplacian = mask.astype(adj.dtype) * laplacian
-        else:
-            deg = np.zeros((padded_nodes_size, padded_nodes_size), dtype=np.float64)
-            np.fill_diagonal(deg, symmetric_deg)
-            laplacian = deg - symmetric_adj * np.exp(theta)
-
-        eigenvalues, eigenvectors = np.linalg.eigh(laplacian)
+        # Normalize and pad eigen vectors.
+        evects = torch.from_numpy(evects).float()
+        evects = eigvec_normalizer(evects, evals, normalization=eigvec_norm)
+        
+        
+        # TODO: Code 
+        k_excl = 0
+        k = max_freqs
+        eigenvalues, eigenvectors = evals, evects
         eigenvalues = eigenvalues[..., k_excl:k_excl + k]
         eigenvectors = eigenvectors[..., k_excl:k_excl + k]
-        
-        evals, evects = np.linalg.eigh(L.toarray())
-        max_freqs=cfg.posenc_LapPE.eigen.max_freqs
-        eigvec_norm=cfg.posenc_LapPE.eigen.eigvec_norm
+        if cfg.posenc_MagLapPE.sign_rotate:
+            sign = torch.zeros((eigenvectors.shape[1],), dtype=eigenvectors.dtype)
+            for i in range(eigenvectors.shape[1]):
+                argmax_i = np.abs(eigenvectors[:, i].real).argmax()
+                sign[i] = np.sign(eigenvectors[argmax_i, i].real)
+            eigenvectors = np.expand_dims(sign, 0) * eigenvectors
 
-        evals, evects = np.linalg.eigh(L.toarray())
-        data.EigVals, data.EigVecs = eigenvalues.real, eigenvectors, laplacian
+            argmax_imag_0 = eigenvectors[:, 0].imag.argmax()
+            rotation = np.angle(eigenvectors[argmax_imag_0:argmax_imag_0 + 1])
+            eigenvectors = eigenvectors * np.exp(-1j * rotation)
+        
+        data.EigVals, data.EigVecs = eigenvalues.real, eigenvectors
     
     return data
 

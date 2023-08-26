@@ -49,15 +49,6 @@ class CustomGNN(torch.nn.Module):
                         dropout=cfg.gnn.dropout,
                         residual=cfg.gnn.residual,
                     ))
-            # elif cfg.gnn.lgvariant >= 10:
-            #     print("FLAG - LG dataset")
-            #     for _ in range(cfg.gnn.layers_mp):
-            #         layers.append(conv_model(
-            #             dim_in*2,
-            #             dim_in*2,
-            #             dropout=cfg.gnn.dropout,
-            #             residual=cfg.gnn.residual,
-            #         ))
             else:
                 assert("Deprecated version of linegraph")
             if cfg.gnn.lgvariant == 20 or cfg.gnn.lgvariant == 21 or cfg.gnn.lgvariant == 22:

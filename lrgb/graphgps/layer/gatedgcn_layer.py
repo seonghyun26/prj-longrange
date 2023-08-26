@@ -153,8 +153,10 @@ class GatedGCNGraphGymLayer(nn.Module):
                                    dropout=0.,  # Dropout is handled by GraphGym's `GeneralLayer` wrapper
                                    residual=False,  # Residual connections are handled by GraphGym's `GNNStackStage` wrapper
                                    **kwargs)
+        self.batchNorm = nn.BatchNorm1d(layer_config.dim_out, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
 
     def forward(self, batch):
+        batch.x = self.batchNorm(batch.x)
         return self.model(batch)
 
 

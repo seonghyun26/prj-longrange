@@ -90,7 +90,7 @@ class GINEConvESLapPE(pyg_nn.conv.MessagePassing):
 class GINEConvLayer(nn.Module):
     """Graph Isomorphism Network with Edge features (GINE) layer.
     """
-    def __init__(self, dim_in, dim_out, dropout, residual, lgvariant=0):
+    def __init__(self, dim_in, dim_out, dropout, residual):
         super().__init__()
         self.dim_in = dim_in
         self.dim_out = dim_out
@@ -103,13 +103,14 @@ class GINEConvLayer(nn.Module):
             pyg_nn.Linear(dim_out, dim_out)
         )
         self.model = pyg_nn.GINEConv(gin_nn)
-        self.lgvariant=lgvariant
+        self.batchNorm = nn.BatchNorm1d(dim_out, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
 
     def forward(self, batch):
         x_in = batch.x
 
         batch.x = self.model(batch.x, batch.edge_index, batch.edge_attr)
 
+        batch.x = self.batchNorm(batch.x)
         batch.x = F.relu(batch.x)
         batch.x = F.dropout(batch.x, p=self.dropout, training=self.training)
 
@@ -130,7 +131,6 @@ class GINEConvGraphGymLayer(nn.Module):
         self.model = pyg_nn.GINEConv(gin_nn)
 
     def forward(self, batch):
-        print("FLAG")
         batch.x = self.model(batch.x, batch.edge_index, batch.edge_attr)
         return batch
 

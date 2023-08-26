@@ -6,7 +6,8 @@ length=${#layer[@]}
 
 for ((i=0;i<length;i++))
 do
-  python main.py --cfg configs/LG/vocsp/$DATASET-GCN.yaml \
+  python main.py --repeat 3 \
+    --cfg configs/LG/vocsp/$DATASET-GCN.yaml \
     wandb.use True \
     wandb.project lrgb \
     gnn.lgvariant 20 \

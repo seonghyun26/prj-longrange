@@ -5,6 +5,7 @@ wandb:
   use: True
   project: peptides-struct
 dataset:
+  dir: datasets
   format: OGB
   name: peptides-structural
   task: graph
@@ -13,7 +14,9 @@ dataset:
   node_encoder: True
   node_encoder_name: Atom+LapPE
   node_encoder_bn: False
-  edge_encoder: False
+  edge_encoder: True
+  edge_encoder_name: Bond
+  edge_encoder_bn: False
 posenc_LapPE:
   dim_pe: 16
   eigen:
@@ -27,11 +30,11 @@ posenc_LapPE:
   raw_norm_type: none
 train:
   mode: custom
-  batch_size: 64
+  batch_size: 128
   eval_period: 1
   ckpt_period: 100
 model:
-  type: gnn
+  type: custom_gnn
   loss_fun: l1
   graph_pooling: mean
 gnn:
@@ -46,13 +49,20 @@ gnn:
   dropout: 0.0
   agg: add
   normalize_adj: False
+  residual: False
   linegraph: False
 optim:
   optimizer: adamW
   weight_decay: 0.0
   base_lr: 0.001
-  max_epoch: 500
+  max_epoch: 400
   scheduler: reduce_on_plateau
   reduce_factor: 0.5
   schedule_patience: 20
   min_lr: 1e-5
+  lr_decay: 0.1
+  momentum: 0.9
+  steps:
+  - 30
+  - 60
+  - 90

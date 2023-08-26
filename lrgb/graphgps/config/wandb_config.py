@@ -20,6 +20,9 @@ def set_cfg_wandb(cfg):
 
     # Optional run name
     cfg.wandb.name = ""
+    
+    # wandb.tags
+    cfg.wandb.tags = []
 
 
 register_config('cfg_wandb', set_cfg_wandb)

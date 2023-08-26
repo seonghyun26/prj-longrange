@@ -164,6 +164,8 @@ def load_dataset_master(format, name, dataset_dir):
 
         elif name.startswith('PCQM4Mv2Contact-'):
             dataset = preformat_PCQM4Mv2Contact(dataset_dir, name)
+        elif name.startswith('PCQM4Mv2Contact_lg-'):
+            dataset = preformat_PCQM4Mv2Contact_lg(dataset_dir, name)
 
         else:
             raise ValueError(f"Unsupported OGB(-derived) dataset: {name}")
@@ -183,7 +185,7 @@ def load_dataset_master(format, name, dataset_dir):
                     pecfg.kernel.times = list(eval(pecfg.kernel.times_func))
                 logging.info(f"Parsed {pe_name} PE kernel times / steps: "
                              f"{pecfg.kernel.times}")
-    if pe_enabled_list and pyg_dataset_id != 'VOCSuperpixels_lgt':
+    if pe_enabled_list and format != 'PyG-VOCSuperpixels_lg':
         start = time.perf_counter()
         logging.info(f"Precomputing Positional Encoding statistics: "
                      f"{pe_enabled_list} for all graphs...")
@@ -437,6 +439,37 @@ def preformat_PCQM4Mv2Contact(dataset_dir, name):
 
     split_name = name.split('-', 1)[1]
     dataset = PygPCQM4Mv2ContactDataset(dataset_dir)
+    # Inductive graph-level split (there is no train/test edge split).
+    s_dict = dataset.get_idx_split(split_name)
+    dataset.split_idxs = [s_dict[s] for s in ['train', 'val', 'test']]
+    if cfg.dataset.resample_negative:
+        dataset.transform = structured_neg_sampling_transform
+    return dataset
+
+def preformat_PCQM4Mv2Contact_lg(dataset_dir, name):
+    """Load PCQM4Mv2-derived molecular contact link prediction dataset.
+
+    Note: This dataset requires RDKit dependency!
+
+    Args:
+       dataset_dir: path where to store the cached dataset
+       name: the type of dataset split: 'shuffle', 'num-atoms'
+
+    Returns:
+       PyG dataset object
+    """
+    try:
+        # Load locally to avoid RDKit dependency until necessary
+        from graphgps.loader.dataset.pcqm4mv2_contact_lg import \
+            PygPCQM4Mv2ContactDataset_lg, \
+            structured_neg_sampling_transform
+    except Exception as e:
+        logging.error('ERROR: Failed to import PygPCQM4Mv2ContactDataset_lg, '
+                      'make sure RDKit is installed.')
+        raise e
+
+    split_name = name.split('-', 1)[1]
+    dataset = PygPCQM4Mv2ContactDataset_lg(dataset_dir)
     # Inductive graph-level split (there is no train/test edge split).
     s_dict = dataset.get_idx_split(split_name)
     dataset.split_idxs = [s_dict[s] for s in ['train', 'val', 'test']]
