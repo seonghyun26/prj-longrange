@@ -9,7 +9,7 @@ from torch_geometric.graphgym.register import register_layer
 class GCNConvLayer(nn.Module):
     """GCN Layer 
     """
-    def __init__(self, dim_in, dim_out, dropout, residual, lgvariant=0):
+    def __init__(self, dim_in, dim_out, dropout, residual, batchNormUse=True):
         super().__init__()
         
         self.dim_in = dim_in
@@ -18,6 +18,7 @@ class GCNConvLayer(nn.Module):
         self.dropout = dropout 
         
         self.model = pyg_nn.GCNConv(dim_in, dim_out)
+        
         self.batchNorm = nn.BatchNorm1d(dim_out, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
         
     def forward(self, batch):
@@ -25,8 +26,8 @@ class GCNConvLayer(nn.Module):
         
         batch.x = self.model(batch.x, batch.edge_index)
         
-        batch.x = self.batchNorm(batch.x)
         batch.x = F.relu(batch.x)
+        batch.x = self.batchNorm(batch.x)
         batch.x = F.dropout(batch.x, p=self.dropout, training=self.training)
         
         if self.residual:

@@ -51,8 +51,6 @@ class CustomGNN(torch.nn.Module):
                     ))
             else:
                 assert("Deprecated version of linegraph")
-            if cfg.gnn.lgvariant == 20 or cfg.gnn.lgvariant == 21 or cfg.gnn.lgvariant == 22:
-                layers.append(lg2graphNode())
         else:
             for _ in range(cfg.gnn.layers_mp):
                 layers.append(conv_model(
@@ -61,6 +59,9 @@ class CustomGNN(torch.nn.Module):
                     dropout=cfg.gnn.dropout,
                     residual=cfg.gnn.residual,
                 ))
+        
+        if cfg.gnn.linegraph and cfg.gnn.lgvariant >= 20:
+            layers.append(lg2graphNode())
         self.gnn_layers = torch.nn.Sequential(*layers)
 
         GNNHead = register.head_dict[cfg.gnn.head]

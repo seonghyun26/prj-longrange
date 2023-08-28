@@ -1,5 +1,5 @@
 cd ../../
-DATASET="peptides-func_lg"
+DATASET="peptides-struct_lg"
 model="GatedGCN"
 # layer=("5" "15" "25")
 # hdim=("134" "78" "60")
@@ -13,11 +13,9 @@ do
   do
     # python main.py
     python main.py --repeat 3 \
-      --cfg configs/LG/peptides-func/$DATASET-$model+LapPE.yaml \
+      --cfg configs/LG/peptides-struct/$DATASET-$model+LapPE.yaml \
       wandb.use True \
       wandb.project lrgb \
-      dataset.node_encoder_bn True \
-      dataset.edge_encoder_bn True \
       gnn.layers_mp ${layer[i]} \
       gnn.dim_inner ${hdim[i]} \
       gnn.dropout $dropoutrate

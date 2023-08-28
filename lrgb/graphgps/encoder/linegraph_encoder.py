@@ -8,6 +8,8 @@ from torch_geometric.graphgym.models.encoder import AtomEncoder, BondEncoder
 from graphgps.encoder.laplace_pos_encoder import LapPENodeEncoder
 from graphgps.encoder.composed_encoders import concat_node_encoders
 
+from torch_geometric.graphgym.config import cfg
+
 class LineGraphNodeEncoder(torch.nn.Module):
     def __init__(self, emb_dim, num_classes=None):
         super().__init__()
@@ -95,7 +97,6 @@ class LineGraphLapPENodeEncoder(torch.nn.Module):
 
         self.atom_embedding_list = torch.nn.ModuleList()
         self.bond_embedding_list = torch.nn.ModuleList()
-        self.LapPENodeEncoder = LapPENodeEncoder(64)
         
         for i, dim in enumerate(get_atom_feature_dims()):
             emb = torch.nn.Embedding(dim, emb_dim)
@@ -164,7 +165,7 @@ class LineGraphLapPENodeEncoder(torch.nn.Module):
         # node_encoded_features = torch.cat([node_encoded_features1, node_encoded_features2], dim=1)
         # batch.x = edge_encoded_features + node_encoded_features
         
-        batch.x = (edge_encoded_features - node_encoded_features1 + node_encoded_features2)/3
+        batch.x = (edge_encoded_features + node_encoded_features1 + node_encoded_features2)/3
         # batch.x = self.gather(torch.cat([edge_encoded_features, node_encoded_features1, -1 * node_encoded_features2], dim=1))
         
         # NOTE: LapPE
@@ -189,7 +190,6 @@ class LineGraphMagLapPENodeEncoder(torch.nn.Module):
 
         self.atom_embedding_list = torch.nn.ModuleList()
         self.bond_embedding_list = torch.nn.ModuleList()
-        self.LapPENodeEncoder = LapPENodeEncoder(64)
         
         for i, dim in enumerate(get_atom_feature_dims()):
             emb = torch.nn.Embedding(dim, emb_dim)
@@ -302,7 +302,7 @@ class LineGraphEdgeEncoder(torch.nn.Module):
         # node_encoded_features = node_encoded_features.repeat(1,2)
         # edge_encoded_features = torch.cat([edge_encoded_features1, edge_encoded_features2], dim=1)
         # batch.edge_attr = node_encoded_features + edge_encoded_features
-        batch.edge_attr = (node_encoded_features - edge_encoded_features1 + edge_encoded_features2)/3
+        batch.edge_attr = node_encoded_features - edge_encoded_features1 + edge_encoded_features2
         # batch.edge_attr = self.gather(torch.cat([node_encoded_features, edge_encoded_features1, edge_encoded_features2], dim=1))
         
         

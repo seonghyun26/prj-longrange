@@ -6,26 +6,26 @@ wandb:
   project: peptides-struct
 dataset:
   format: OGB
-  name: peptides-structural_lg
+  name: peptides-structural
   task: graph
   task_type: regression
   transductive: False
   node_encoder: True
-  node_encoder_name: AtomLG+LapPE
+  node_encoder_name: Atom
   node_encoder_bn: False
   edge_encoder: True
-  edge_encoder_name: BondLG
+  edge_encoder_name: Bond
   edge_encoder_bn: False
 posenc_LapPE:
-  enable: True
-  eigen:
-    laplacian_norm: sym
-    eigvec_norm: L2
-    max_freqs: 10
-  model: DeepSet  # Transformer
   dim_pe: 16
+  eigen:
+    eigvec_norm: L2
+    laplacian_norm: sym
+    max_freqs: 10
+  enable: true
   layers: 2
-  n_heads: 4  # Only used when `posenc.model: Transformer`
+  model: DeepSet
+  n_heads: 4
   raw_norm_type: none
 train:
   mode: custom

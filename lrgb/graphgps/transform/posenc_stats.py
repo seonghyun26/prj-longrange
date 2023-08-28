@@ -137,49 +137,48 @@ def compute_posenc_stats(data, pe_types, is_undirected, cfg):
     # NOTE: eigv_magnetic_laplacian_numba function
     if 'MagLapPE' in pe_types:
         
-        # TODO: change L to magnetc laplacian
-        # L = to_scipy_sparse_matrix(
-        #     *get_laplacian(
-        #         undir_edge_index,
-        #         normalization=laplacian_norm_type,
-        #         num_nodes=N
-        #     )
-        # )
-        # ML = 
-        evals, evects = np.linalg.eigh(L.toarray())
-     
-        N = len(evals)  # Number of nodes, including disconnected nodes.
-        max_freqs = cfg.posenc_LapPE.eigen.max_freqs
-        eigvec_norm = cfg.posenc_LapPE.eigen.eigvec_norm
-
-        # Keep up to the maximum desired number of frequencies.
-        idx = evals.argsort()[:max_freqs]
-        evals, evects = evals[idx], np.real(evects[:, idx])
-        evals = torch.from_numpy(np.real(evals)).clamp_min(0)
-
-        # Normalize and pad eigen vectors.
-        evects = torch.from_numpy(evects).float()
-        evects = eigvec_normalizer(evects, evals, normalization=eigvec_norm)
+        edge_index = data.edge_index
+        adj1 = to_dense_adj(edge_index).squeeze(0)
+        adj2 = to_dense_adj(edge_index[[1,0], :]).squeeze(0)
         
+        # NOTE: pad adj1, adj2 according data.x, number of nodes
+        if data.x.shape[0] != adj1.shape[0]:
+            paddingSize = data.x.shape[0] - adj1.shape[0]
+            adj1 = torch.nn.functional.pad(adj1, (0, paddingSize, 0, paddingSize))
+            adj2 = torch.nn.functional.pad(adj2, (0, paddingSize, 0, paddingSize))
         
-        # TODO: Code 
-        k_excl = 0
-        k = max_freqs
-        eigenvalues, eigenvectors = evals, evects
-        eigenvalues = eigenvalues[..., k_excl:k_excl + k]
-        eigenvectors = eigenvectors[..., k_excl:k_excl + k]
-        if cfg.posenc_MagLapPE.sign_rotate:
-            sign = torch.zeros((eigenvectors.shape[1],), dtype=eigenvectors.dtype)
-            for i in range(eigenvectors.shape[1]):
-                argmax_i = np.abs(eigenvectors[:, i].real).argmax()
-                sign[i] = np.sign(eigenvectors[argmax_i, i].real)
-            eigenvectors = np.expand_dims(sign, 0) * eigenvectors
-
-            argmax_imag_0 = eigenvectors[:, 0].imag.argmax()
-            rotation = np.angle(eigenvectors[argmax_imag_0:argmax_imag_0 + 1])
-            eigenvectors = eigenvectors * np.exp(-1j * rotation)
+        adj_sym = torch.zeros_like(adj1).type(torch.float32)
+        adj_sym[adj1.to(torch.bool) | adj2.to(torch.bool)] = 1
         
-        data.EigVals, data.EigVecs = eigenvalues.real, eigenvectors
+        degree1 = torch.diag(torch.sum(adj1, dim=0))
+        degree2 = torch.diag(torch.sum(adj2, dim=0))
+        degree_sym = degree1 + degree2
+        degree_sym_mask = (degree_sym != 0)
+        degree_normalized = torch.zeros_like(degree_sym, dtype=torch.float32)
+        degree_normalized[degree_sym_mask] = torch.pow(degree_sym[degree_sym_mask], -0.5)
+        
+        identity = torch.eye(adj1.shape[0], dtype=torch.float32, device=adj1.device)
+        
+        pi = 3.1416
+        q = 0.001
+        i = torch.complex(torch.zeros(adj1.shape, dtype=torch.float32, device=adj1.device), torch.ones(adj1.shape, dtype=torch.float32, device=adj1.device))
+        theta = 2 * pi * q * (adj1 - adj2) * i
+        exp = torch.exp(theta)
+        
+        MagL = torch.sub(identity, (degree_normalized @ adj_sym @ degree_normalized) * exp)
+        
+        evals, evects = np.linalg.eigh(MagL.numpy())
+        max_freqs = cfg.posenc_MagLapPE.eigen.max_freqs
+        eigvec_norm = cfg.posenc_MagLapPE.eigen.eigvec_norm
+        
+        data.EigVals, data.EigVecs = get_lap_decomp_stats(
+            evals=evals, evects=evects,
+            max_freqs=max_freqs,
+            eigvec_norm=eigvec_norm
+        )
+        
+        if data.x.shape[0] != evals.shape[0]:
+            print("WARNING: x and EigVecs have different shapes")
     
     return data
 

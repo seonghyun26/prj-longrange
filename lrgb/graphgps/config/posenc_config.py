@@ -91,6 +91,8 @@ def set_cfg_posenc(cfg):
     for name in ['posenc_MagLapPE']:
         pecfg = getattr(cfg, name)
         
+        pecfg.model = "DeepSet"
+        
         pecfg.sign_rotate = True
 
 

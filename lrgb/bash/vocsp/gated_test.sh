@@ -9,6 +9,7 @@ do
     gnn.layers_mp 10 \
     gnn.dim_inner 96 \
     dataset.node_encoder_bn True \
-    dataset.edge_encoder_bn True
+    dataset.edge_encoder_bn True \
+    train.batch_size 16
   sleep 10
 done
