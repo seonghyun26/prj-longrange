@@ -18,6 +18,9 @@ from tqdm import tqdm
 
 from graphgps.utils import negate_edge_index
 
+from graphgps.transform.posenc_stats import compute_posenc_stats
+from torch_geometric.graphgym.config import cfg
+
 
 def cxsmiles_to_mol_with_contact(cxsmiles):
     mol = MolFromSmiles(cxsmiles, sanitize=False)
@@ -348,16 +351,50 @@ class PygPCQM4Mv2ContactDataset_lg(InMemoryDataset):
         assert len(graph['edge_feat']) == graph['edge_index'].shape[1]
         assert len(graph['node_feat']) == graph['num_nodes']
 
-        data.__num_nodes__ = int(graph['num_nodes'])
-        data.edge_index = torch.from_numpy(graph['edge_index']).long()
-        data.edge_attr = torch.from_numpy(graph['edge_feat']).long()
-        data.x = torch.from_numpy(graph['node_feat']).long()
-        data.y = None
+        # data.__num_nodes__ = int(graph['num_nodes'])
+        # data.edge_index = torch.from_numpy(graph['edge_index']).long()
+        # data.edge_attr = torch.from_numpy(graph['edge_feat']).long()
+        # data.x = torch.from_numpy(graph['node_feat']).long()
+        # data.y = None
 
         # Format edge labels.
         id_pos = to_undirected(torch.from_numpy(graph['contact_idx'].T))
         data.edge_index_labeled = id_pos
         data.edge_label = torch.ones(id_pos.shape[1], dtype=torch.int)
+        
+        # TODO: line graph
+        edge_index = torch.from_numpy(graph['edge_index']).long()
+        edge_attr = torch.from_numpy(graph['edge_feat']).long()
+        x = torch.from_numpy(graph['node_feat']).long()
+        
+        lg_node_attr_edge = edge_attr
+        lg_node_attr_node = x[edge_index.T]
+        lg_node_attr = torch.cat([lg_node_attr_edge, lg_node_attr_node[:, 0, :], lg_node_attr_node[:, 1, :]], dim=1)
+        
+        # NOTE: line graph edge index
+        lg_node_idx = edge_index.T
+        lg_edge_idx_mask = torch.nonzero(
+            (lg_node_idx[:, 1, None] == lg_node_idx[:, 0]) &
+            (lg_node_idx[:, 0, None] != lg_node_idx[:, 1])
+        )
+        lg_edge_idx = lg_node_idx[lg_edge_idx_mask]
+        
+        # NOTE: line graph edge attributes
+        lg_edge_attr_node = x[lg_edge_idx[:, 0, 1]]
+        edgeStartMask = lg_edge_idx_mask[:, 0].T
+        edgeEndMask = lg_edge_idx_mask[:, 1].T
+        lg_edge_attr_start = edge_attr[edgeStartMask]
+        lg_edge_attr_end = edge_attr[edgeEndMask]
+        lg_edge_attr = torch.cat([lg_edge_attr_node, lg_edge_attr_start, lg_edge_attr_end], dim=1)
+        
+        # NOTE: line graph data wrap up
+        data.__num_nodes__ = x.shape[0]
+        data.edge_index = lg_edge_idx_mask.T
+        data.edge_attr = lg_edge_attr
+        data.x = lg_node_attr
+        data.y = None
+        
+        # data = compute_posenc_stats(data, ['LapPE'], False, cfg)
 
         # Note: Call a negative edge sampling transform to save precomputed
         # negative edges, otherwise rely on on-the-fly sampling by setting
@@ -387,8 +424,6 @@ class PygPCQM4Mv2ContactDataset_lg(InMemoryDataset):
             delayed(self._process_smiles)(s) for s in tqdm(smiles_list)
         )
         data_list = [g for g in data_list if g is not None]
-        
-        # TODO: convert to line graph
         
 
         NG = len(data_list)

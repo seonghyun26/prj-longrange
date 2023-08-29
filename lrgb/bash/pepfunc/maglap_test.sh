@@ -2,7 +2,7 @@ cd ../../
 DATASET="peptides-func_lg"
 model="GCN"
 
-for dropoutrate in 0.01
+for dropoutrate in 0.0
 do
   # python main.py \
   python main.py --repeat 3 \

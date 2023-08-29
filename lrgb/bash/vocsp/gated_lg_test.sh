@@ -1,11 +1,15 @@
 cd ../../
 DATASET="vocsuperpixels_lg"
 model="GatedGCN"
+layer=("5" "10" "15")
+hdim=("132" "94" "72")
+length=${#layer[@]}
+dropoutrate=0.15
 
-for dropoutrate in 0.2 0.1
+for ((i=0;i<length;i++))
 do
-  # python main.py --repeat 3 \
-  python main.py \
+  # python main.py \
+  python main.py --repeat 3 \
     --cfg configs/LG/vocsp/$DATASET-$model+LapPE.yaml \
     wandb.use True \
     wandb.project lrgb \

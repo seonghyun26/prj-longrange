@@ -27,6 +27,7 @@ posenc_LapPE:
   model: DeepSet
   n_heads: 4
   raw_norm_type: none
+  version: 1
 train:
   mode: custom
   batch_size: 128

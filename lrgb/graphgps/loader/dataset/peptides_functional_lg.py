@@ -12,6 +12,9 @@ from torch_geometric.data import Data, download_url
 from torch_geometric.data import InMemoryDataset
 from tqdm import tqdm
 
+from graphgps.transform.posenc_stats import compute_posenc_stats
+from torch_geometric.graphgym.config import cfg
+
 
 class PeptidesFunctional_LG_Dataset(InMemoryDataset):
     def __init__(self, root='datasets', smiles2graph=smiles2graph,
@@ -103,14 +106,49 @@ class PeptidesFunctional_LG_Dataset(InMemoryDataset):
             assert (len(graph['edge_feat']) == graph['edge_index'].shape[1])
             assert (len(graph['node_feat']) == graph['num_nodes'])
 
-            data.__num_nodes__ = int(graph['num_nodes'])
-            data.edge_index = torch.from_numpy(graph['edge_index']).to(
-                torch.int64)
-            data.edge_attr = torch.from_numpy(graph['edge_feat']).to(
-                torch.int64)
-            data.x = torch.from_numpy(graph['node_feat']).to(torch.int64)
+            # data.__num_nodes__ = int(graph['num_nodes'])
+            # data.edge_index = torch.from_numpy(graph['edge_index']).to(
+            #     torch.int64)
+            # data.edge_attr = torch.from_numpy(graph['edge_feat']).to(
+            #     torch.int64)
+            # data.x = torch.from_numpy(graph['node_feat']).to(torch.int64)
+            # data.y = torch.Tensor([eval(data_df['labels'].iloc[i])])
+            
+            edge_index = torch.from_numpy(graph['edge_index']).to(torch.int64)
+            edge_attr = torch.from_numpy(graph['edge_feat']).to(torch.int64)
+            x = torch.from_numpy(graph['node_feat']).to(torch.int64)
+            x_size = x.shape[0]
+            
+            # NOTE: line graph nodes
+            lg_node_attr_edge = edge_attr
+            lg_node_attr_node = x[edge_index.T]
+            lg_node_attr = torch.cat([lg_node_attr_edge, lg_node_attr_node[:, 0, :], lg_node_attr_node[:, 1, :]], dim=1)
+            
+            # NOTE: line graph edge index
+            lg_node_idx = edge_index.T
+            lg_edge_idx_mask = torch.nonzero(
+                (lg_node_idx[:, 1, None] == lg_node_idx[:, 0]) &
+                (lg_node_idx[:, 0, None] != lg_node_idx[:, 1])
+            )
+            lg_edge_idx = lg_node_idx[lg_edge_idx_mask]
+            
+            # NOTE: line graph edge attributes
+            lg_edge_attr_node = x[lg_edge_idx[:, 0, 1]]
+            edgeStartMask = lg_edge_idx_mask[:, 0].T
+            edgeEndMask = lg_edge_idx_mask[:, 1].T
+            lg_edge_attr_start = edge_attr[edgeStartMask]
+            lg_edge_attr_end = edge_attr[edgeEndMask]
+            lg_edge_attr = torch.cat([lg_edge_attr_node, lg_edge_attr_start, lg_edge_attr_end], dim=1)
+            
+            # NOTE: line graph data wrap up
+            data.__num_nodes__ = x_size
+            data.edge_index = lg_edge_idx_mask.T
+            data.edge_attr = lg_edge_attr
+            data.x = lg_node_attr
             data.y = torch.Tensor([eval(data_df['labels'].iloc[i])])
-
+            
+            data = compute_posenc_stats(data, ['LapPE'], False, cfg)
+            
             data_list.append(data)
 
         if self.pre_transform is not None:

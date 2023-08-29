@@ -45,6 +45,8 @@ def set_cfg_posenc(cfg):
         # In addition to appending PE to the node features, pass them also as
         # a separate variable in the PyG graph batch object.
         pecfg.pass_as_var = False
+        
+        pecfg.version = 1
 
     
     # Config for EquivStable LapPE

@@ -2,10 +2,8 @@ cd ../
 
 DATASET="peptides-func_lg_backtrack"
 model="GCN"
-# layer=("5" "15" "25")
-# hdim=("278" "162" "132")
-layer=("15")
-hdim=("162")
+layer=("5" "15" "25")
+hdim=("278" "162" "132")
 length=${#layer[@]}
 
 for ((i=0;i<length;i++))

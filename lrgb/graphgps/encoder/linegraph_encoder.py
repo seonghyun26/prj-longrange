@@ -93,17 +93,34 @@ class LineGraphLapPENodeEncoder(torch.nn.Module):
         
         from ogb.utils.features import get_atom_feature_dims, get_bond_feature_dims
 
-        dim_pe = 16    
+        dim_pe = cfg.posenc_LapPE.dim_pe
 
         self.atom_embedding_list = torch.nn.ModuleList()
         self.bond_embedding_list = torch.nn.ModuleList()
+
+        if cfg.posenc_LapPE.version == 2:
+            assert( emb_dim % 3 == 0)
+            self.emb_dim = emb_dim // 3
+        elif cfg.posenc_LapPE.version == 3:
+            assert( emb_dim % 2 == 0)
+            self.emb_dim = emb_dim // 2
+        elif cfg.posenc_LapPE.version == 4:
+            self.emb_dim = emb_dim 
+        elif cfg.posenc_LapPE.version == 5:
+            self.emb_dim = emb_dim 
+            self.linear_compress = nn.Linear(emb_dim * 2, emb_dim)
+        elif cfg.posenc_LapPE.version == 6:
+            self.emb_dim = emb_dim 
+            self.linear_compress = nn.Linear(emb_dim * 3, emb_dim)
+        else:
+            self.emb_dim = emb_dim
         
         for i, dim in enumerate(get_atom_feature_dims()):
-            emb = torch.nn.Embedding(dim, emb_dim)
+            emb = torch.nn.Embedding(dim, self.emb_dim)
             torch.nn.init.xavier_uniform_(emb.weight.data)
             self.atom_embedding_list.append(emb)
         for i, dim in enumerate(get_bond_feature_dims()):
-            emb = torch.nn.Embedding(dim+1, emb_dim)
+            emb = torch.nn.Embedding(dim, self.emb_dim)
             torch.nn.init.xavier_uniform_(emb.weight.data)
             self.bond_embedding_list.append(emb)
             
@@ -165,7 +182,20 @@ class LineGraphLapPENodeEncoder(torch.nn.Module):
         # node_encoded_features = torch.cat([node_encoded_features1, node_encoded_features2], dim=1)
         # batch.x = edge_encoded_features + node_encoded_features
         
-        batch.x = (edge_encoded_features + node_encoded_features1 + node_encoded_features2)/3
+        
+        if cfg.posenc_LapPE.version == 2:
+            batch.x = torch.cat([edge_encoded_features, node_encoded_features1, node_encoded_features2], dim=1)
+        elif cfg.posenc_LapPE.version == 3:
+            batch.x = torch.cat([node_encoded_features1, node_encoded_features2], dim=1)
+        elif cfg.posenc_LapPE.version == 4:
+            batch.x = (node_encoded_features1 + node_encoded_features2) / 2
+        elif cfg.posenc_LapPE.version == 5:
+            batch.x = self.linear_compress(torch.cat([node_encoded_features1, node_encoded_features2], dim=1))
+        elif cfg.posenc_LapPE.version == 6:
+            batch.x = self.linear_compress(torch.cat([edge_encoded_features, node_encoded_features1, node_encoded_features2], dim=1))
+        else:
+            batch.x = edge_encoded_features - node_encoded_features1 + node_encoded_features2
+        
         # batch.x = self.gather(torch.cat([edge_encoded_features, node_encoded_features1, -1 * node_encoded_features2], dim=1))
         
         # NOTE: LapPE
@@ -276,12 +306,20 @@ class LineGraphEdgeEncoder(torch.nn.Module):
         self.atom_embedding_list = torch.nn.ModuleList()
         self.bond_embedding_list = torch.nn.ModuleList()
         
+        if cfg.posenc_LapPE.version == 2:
+            assert( emb_dim % 3 == 0)
+            self.emb_dim = emb_dim // 3
+        elif cfg.posenc_LapPE.version == 3:
+            self.emb_dim = emb_dim
+        else:
+            self.emb_dim = emb_dim
+        
         for i, dim in enumerate(get_atom_feature_dims()):
-            emb = torch.nn.Embedding(dim, emb_dim)
+            emb = torch.nn.Embedding(dim, self.emb_dim)
             torch.nn.init.xavier_uniform_(emb.weight.data)
             self.atom_embedding_list.append(emb)
         for i, dim in enumerate(get_bond_feature_dims()):
-            emb = torch.nn.Embedding(dim+1, emb_dim)
+            emb = torch.nn.Embedding(dim, self.emb_dim)
             torch.nn.init.xavier_uniform_(emb.weight.data)
             self.bond_embedding_list.append(emb)
             
@@ -302,7 +340,12 @@ class LineGraphEdgeEncoder(torch.nn.Module):
         # node_encoded_features = node_encoded_features.repeat(1,2)
         # edge_encoded_features = torch.cat([edge_encoded_features1, edge_encoded_features2], dim=1)
         # batch.edge_attr = node_encoded_features + edge_encoded_features
-        batch.edge_attr = node_encoded_features - edge_encoded_features1 + edge_encoded_features2
+        if cfg.posenc_LapPE.version == 2:
+            batch.edge_attr = torch.cat([node_encoded_features, edge_encoded_features1, edge_encoded_features2], dim=1)
+        elif cfg.posenc_LapPE.version == 3:
+            batch.edge_attr = node_encoded_features
+        else:
+            batch.edge_attr = node_encoded_features - edge_encoded_features1 + edge_encoded_features2
         # batch.edge_attr = self.gather(torch.cat([node_encoded_features, edge_encoded_features1, edge_encoded_features2], dim=1))
         
         
