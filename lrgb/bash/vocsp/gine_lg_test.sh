@@ -1,16 +1,20 @@
 cd ../../
 DATASET="vocsuperpixels_lg"
 model="GINE"
+layer=("5" "10" "15")
+hdim=("204" "144" "120")
+length=${#layer[@]}
+dropoutrate=0.15
 
-for dropoutrate in 0.0 0.1 0.2
+for i in 2
 do
-  # python main.py --repeat 3 \
-  python main.py \
+  # python main.py \
+  python main.py --repeat 3 \
     --cfg configs/LG/vocsp/$DATASET-$model+LapPE.yaml \
     wandb.use True \
     wandb.project lrgb \
-    gnn.layers_mp 10 \
-    gnn.dim_inner 148 \
+    gnn.layers_mp ${layer[i]} \
+    gnn.dim_inner ${hdim[i]} \
     gnn.dropout $dropoutrate
   sleep 10
 done

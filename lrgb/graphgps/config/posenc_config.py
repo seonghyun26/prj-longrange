@@ -46,7 +46,9 @@ def set_cfg_posenc(cfg):
         # a separate variable in the PyG graph batch object.
         pecfg.pass_as_var = False
         
-        pecfg.version = 1
+        # Version of the positional encoding for line graph
+        pecfg.version = 2
+        
 
     
     # Config for EquivStable LapPE

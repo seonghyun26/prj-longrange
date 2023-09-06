@@ -2,14 +2,15 @@ cd ../../
 DATASET="peptides-struct_lg"
 model="GCN"
 layer=("5" "15" "25")
-hdim=("268" "162" "132")
+hdim=("270" "162" "132")
 length=${#layer[@]}
-i=1
+i=0
+# encoderVersion=2
 dropoutrate=0.0
 
-for encoderVersion in 3 4 5 6
+for encoderVersion in 2 3 4 5 6 7
 do
-  # python main.py --repeat 3 \
+  # python main.py --repeat 2 \
   python main.py \
     --cfg configs/LG/peptides-struct/$DATASET-$model+LapPE.yaml \
     wandb.use True \

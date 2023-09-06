@@ -28,6 +28,10 @@ def train_epoch(logger, loader, model, optimizer, scheduler, batch_accumulation)
             _true = true
             _pred = pred_score
         else:
+            # if cfg.dataset.name == 'peptides-structural_lg':
+            #     mask = torch.Tensor([0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0]).to(pred.device)
+            #     pred = mask * pred
+            #     true = mask * true
             loss, pred_score = compute_loss(pred, true)
             _true = true.detach().to('cpu', non_blocking=True)
             _pred = pred_score.detach().to('cpu', non_blocking=True)

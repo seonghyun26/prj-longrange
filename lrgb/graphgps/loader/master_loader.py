@@ -18,6 +18,8 @@ from graphgps.loader.dataset.coco_superpixels import COCOSuperpixels
 from graphgps.loader.dataset.malnet_tiny import MalNetTiny
 from graphgps.loader.dataset.voc_superpixels import VOCSuperpixels
 from graphgps.loader.dataset.voc_superpixels_lg import VOCSuperpixels_lg
+from graphgps.loader.dataset.voc_superpixels_lg_vn import VOCSuperpixels_lg_vn
+from graphgps.loader.dataset.voc_superpixels_lg_ed import VOCSuperpixels_lg_ed
 from graphgps.loader.split_generator import (prepare_splits,
                                              set_dataset_splits)
 from graphgps.transform.posenc_stats import compute_posenc_stats
@@ -116,6 +118,12 @@ def load_dataset_master(format, name, dataset_dir):
                                                cfg.dataset.slic_compactness)
         elif pyg_dataset_id == 'VOCSuperpixels_lg':
             dataset = preformat_VOCSuperpixels_lg(dataset_dir, name,
+                                               cfg.dataset.slic_compactness)
+        elif pyg_dataset_id == 'VOCSuperpixels_lg_vn':
+            dataset = preformat_VOCSuperpixels_lg_vn(dataset_dir, name,
+                                               cfg.dataset.slic_compactness)
+        elif pyg_dataset_id == 'VOCSuperpixels_lg_ed':
+            dataset = preformat_VOCSuperpixels_lg_ed(dataset_dir, name,
                                                cfg.dataset.slic_compactness)
 
         elif pyg_dataset_id == 'COCOSuperpixels':
@@ -462,7 +470,8 @@ def preformat_PCQM4Mv2Contact_lg(dataset_dir, name):
         # Load locally to avoid RDKit dependency until necessary
         from graphgps.loader.dataset.pcqm4mv2_contact_lg import \
             PygPCQM4Mv2ContactDataset_lg, \
-            structured_neg_sampling_transform
+            structured_neg_sampling_transform, \
+            structured_neg_sampling_transform_lg
     except Exception as e:
         logging.error('ERROR: Failed to import PygPCQM4Mv2ContactDataset_lg, '
                       'make sure RDKit is installed.')
@@ -474,7 +483,7 @@ def preformat_PCQM4Mv2Contact_lg(dataset_dir, name):
     s_dict = dataset.get_idx_split(split_name)
     dataset.split_idxs = [s_dict[s] for s in ['train', 'val', 'test']]
     if cfg.dataset.resample_negative:
-        dataset.transform = structured_neg_sampling_transform
+        dataset.transform = structured_neg_sampling_transform_lg
     return dataset
 
 
@@ -498,6 +507,8 @@ def preformat_Peptides(dataset_dir, name):
             PeptidesFunctionalDataset
         from graphgps.loader.dataset.peptides_functional_lg import \
             PeptidesFunctional_LG_Dataset
+        from graphgps.loader.dataset.peptides_functional_lg_node import \
+            PeptidesFunctional_LG_NODE_Dataset
         from graphgps.loader.dataset.peptides_functional_lg_backtrack import \
             PeptidesFunctional_LG_backtrack_Dataset
         from graphgps.loader.dataset.peptides_functional_lg_vn import \
@@ -510,6 +521,8 @@ def preformat_Peptides(dataset_dir, name):
             PeptidesStructural_LGDataset
         from graphgps.loader.dataset.peptides_structural_lg_vn import \
             PeptidesStructural_LG_VN_Dataset
+        from graphgps.loader.dataset.peptides_structural_lg_nbnb import \
+            PeptidesStructural_LG_NBNB_Dataset
     except Exception as e:
         logging.error('ERROR: Failed to import Peptides dataset class, '
                       'make sure RDKit is installed.')
@@ -520,6 +533,8 @@ def preformat_Peptides(dataset_dir, name):
         dataset = PeptidesFunctionalDataset(dataset_dir)
     elif dataset_type == 'functional_lg':
         dataset = PeptidesFunctional_LG_Dataset(dataset_dir)
+    elif dataset_type == 'functional_lg_node':
+        dataset = PeptidesFunctional_LG_NODE_Dataset(dataset_dir)
     elif dataset_type == 'functional_lg_backtrack':
         dataset = PeptidesFunctional_LG_backtrack_Dataset(dataset_dir)
     elif dataset_type == 'functional_lg_vn':
@@ -532,6 +547,8 @@ def preformat_Peptides(dataset_dir, name):
         dataset = PeptidesStructural_LGDataset(dataset_dir)
     elif dataset_type == 'structural_lg_vn':
         dataset = PeptidesStructural_LG_VN_Dataset(dataset_dir)
+    elif dataset_type == 'structural_lg_nbnb':
+        dataset = PeptidesStructural_LG_NBNB_Dataset(dataset_dir)
     s_dict = dataset.get_idx_split()
     dataset.split_idxs = [s_dict[s] for s in ['train', 'val', 'test']]
     return dataset
@@ -603,6 +620,39 @@ def preformat_VOCSuperpixels_lg(dataset_dir, name, slic_compactness):
     """
     dataset = join_dataset_splits(
         [VOCSuperpixels_lg(root=dataset_dir, name=name,
+                        slic_compactness=slic_compactness,
+                        split=split)
+         for split in ['train', 'val', 'test']]
+    )
+    return dataset
+
+def preformat_VOCSuperpixels_lg_vn(dataset_dir, name, slic_compactness):
+    """Load and preformat VOCSuperpixels dataset.
+
+    Args:
+        dataset_dir: path where to store the cached dataset
+    Returns:
+        PyG dataset object
+    """
+    dataset = join_dataset_splits(
+        [VOCSuperpixels_lg_vn(root=dataset_dir, name=name,
+                        slic_compactness=slic_compactness,
+                        split=split)
+         for split in ['train', 'val', 'test']]
+    )
+    return dataset
+
+
+def preformat_VOCSuperpixels_lg_ed(dataset_dir, name, slic_compactness):
+    """Load and preformat VOCSuperpixels dataset.
+
+    Args:
+        dataset_dir: path where to store the cached dataset
+    Returns:
+        PyG dataset object
+    """
+    dataset = join_dataset_splits(
+        [VOCSuperpixels_lg_ed(root=dataset_dir, name=name,
                         slic_compactness=slic_compactness,
                         split=split)
          for split in ['train', 'val', 'test']]

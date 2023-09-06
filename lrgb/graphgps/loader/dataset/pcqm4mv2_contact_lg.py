@@ -21,6 +21,7 @@ from graphgps.utils import negate_edge_index
 from graphgps.transform.posenc_stats import compute_posenc_stats
 from torch_geometric.graphgym.config import cfg
 
+from graphgps.loader.dataset.graph2linegraph import graph2LineGraph
 
 def cxsmiles_to_mol_with_contact(cxsmiles):
     mol = MolFromSmiles(cxsmiles, sanitize=False)
@@ -216,6 +217,36 @@ def structured_neg_sampling_transform(data):
     data.edge_label = create_link_label(id_pos, id_neg).int()
     return data
 
+def structured_neg_sampling_transform_lg(data):
+    """ Structured negative sampling for link prediction tasks as a transform.
+
+    Sample `num_neg_per_pos` negative edges for each head node of a positive
+    edge.
+
+    Args:
+        data (torch_geometric.data.Data): Input data object
+
+    Returns: Transformed data object with negative edges + link pred labels
+    """
+    id_pos = data.edge_index_labeled[:, data.edge_label == 1]  # Positive edge_index
+    sampling_out = custom_structured_negative_sampling(
+        edge_index=id_pos,
+        num_nodes=data.num_nodes,
+        num_neg_per_pos=2,
+        contains_neg_self_loops=True,
+        return_ik_only=True)
+    id_neg = torch.stack(sampling_out)
+
+    data.edge_index_labeled = torch.cat([id_pos, id_neg], dim=-1)
+    data.edge_label = create_link_label(id_pos, id_neg).int()
+    
+    lg_node_attr, lg_edge_idx_mask, lg_edge_attr = graph2LineGraph(data.x, data.edge_index, data.edge_attr)
+    data.__num_nodes__ = lg_node_attr.shape[0]
+    data.edge_index = lg_edge_idx_mask.T
+    data.edge_attr = lg_edge_attr
+    data.x = lg_node_attr
+    
+    return data
 
 def neg_sampling_transform(data):
     """ Negative sampling for link prediction tasks as a transform.
@@ -304,6 +335,7 @@ class PygPCQM4Mv2ContactDataset_lg(InMemoryDataset):
                 shutil.rmtree(self.folder)
 
         super().__init__(self.folder, transform, pre_transform)
+        super().__init__(self.folder)
         self.data, self.slices = torch.load(self.processed_paths[0])
 
     @property
@@ -351,62 +383,36 @@ class PygPCQM4Mv2ContactDataset_lg(InMemoryDataset):
         assert len(graph['edge_feat']) == graph['edge_index'].shape[1]
         assert len(graph['node_feat']) == graph['num_nodes']
 
-        # data.__num_nodes__ = int(graph['num_nodes'])
-        # data.edge_index = torch.from_numpy(graph['edge_index']).long()
-        # data.edge_attr = torch.from_numpy(graph['edge_feat']).long()
-        # data.x = torch.from_numpy(graph['node_feat']).long()
-        # data.y = None
+        data.__num_nodes__ = int(graph['num_nodes'])
+        data.edge_index = torch.from_numpy(graph['edge_index']).long()
+        data.edge_attr = torch.from_numpy(graph['edge_feat']).long()
+        data.x = torch.from_numpy(graph['node_feat']).long()
+        data.y = None
 
         # Format edge labels.
         id_pos = to_undirected(torch.from_numpy(graph['contact_idx'].T))
         data.edge_index_labeled = id_pos
         data.edge_label = torch.ones(id_pos.shape[1], dtype=torch.int)
         
-        # TODO: line graph
-        edge_index = torch.from_numpy(graph['edge_index']).long()
-        edge_attr = torch.from_numpy(graph['edge_feat']).long()
-        x = torch.from_numpy(graph['node_feat']).long()
-        
-        lg_node_attr_edge = edge_attr
-        lg_node_attr_node = x[edge_index.T]
-        lg_node_attr = torch.cat([lg_node_attr_edge, lg_node_attr_node[:, 0, :], lg_node_attr_node[:, 1, :]], dim=1)
-        
-        # NOTE: line graph edge index
-        lg_node_idx = edge_index.T
-        lg_edge_idx_mask = torch.nonzero(
-            (lg_node_idx[:, 1, None] == lg_node_idx[:, 0]) &
-            (lg_node_idx[:, 0, None] != lg_node_idx[:, 1])
-        )
-        lg_edge_idx = lg_node_idx[lg_edge_idx_mask]
-        
-        # NOTE: line graph edge attributes
-        lg_edge_attr_node = x[lg_edge_idx[:, 0, 1]]
-        edgeStartMask = lg_edge_idx_mask[:, 0].T
-        edgeEndMask = lg_edge_idx_mask[:, 1].T
-        lg_edge_attr_start = edge_attr[edgeStartMask]
-        lg_edge_attr_end = edge_attr[edgeEndMask]
-        lg_edge_attr = torch.cat([lg_edge_attr_node, lg_edge_attr_start, lg_edge_attr_end], dim=1)
-        
-        # NOTE: line graph data wrap up
-        data.__num_nodes__ = x.shape[0]
-        data.edge_index = lg_edge_idx_mask.T
-        data.edge_attr = lg_edge_attr
-        data.x = lg_node_attr
-        data.y = None
-        
-        # data = compute_posenc_stats(data, ['LapPE'], False, cfg)
+        # NOTE: line graph conversion
+        # lg_node_attr, lg_edge_idx_mask, lg_edge_attr = graph2LineGraph(x, edge_index, edge_attr)
+        # data.__num_nodes__ = lg_node_attr.shape[0]
+        # data.edge_index = lg_edge_idx_mask.T
+        # data.edge_attr = lg_edge_attr
+        # data.x = lg_node_attr
+    
 
-        # Note: Call a negative edge sampling transform to save precomputed
+        # NOTE: Call a negative edge sampling transform to save precomputed
         # negative edges, otherwise rely on on-the-fly sampling by setting
         # one of these transforms as the Dataset's transform function.
 
-        ## Sample negative edges for each head node of a positive edge.
+        # # Sample negative edges for each head node of a positive edge.
         # data = structured_neg_sampling_transform(data)
 
-        ## Sample random negative edges using PyG method.
+        # # Sample random negative edges using PyG method.
         # data = neg_sampling_transform(data)
 
-        ## All edges that are "not in contact" are negative edges.
+        # # All edges that are "not in contact" are negative edges.
         # data = complete_neg_transform(data)
 
         return data

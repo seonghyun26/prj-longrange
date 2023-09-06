@@ -18,6 +18,6 @@ do
     gnn.residual False \
     gnn.batchnorm True \
     gnn.dropout $dropoutrate \
-    optim.max_epoch 150
+    optim.max_epoch 300
   sleep 10
 done

@@ -15,6 +15,7 @@ dataset:
   edge_encoder: True
   edge_encoder_name: Bond
   edge_encoder_bn: False
+  regression_targets: []
 train:
   mode: custom
   batch_size: 64

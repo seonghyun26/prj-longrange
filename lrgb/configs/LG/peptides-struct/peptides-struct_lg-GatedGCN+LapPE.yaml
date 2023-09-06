@@ -49,7 +49,7 @@ gnn:
   dropout: 0.0
   agg: add
   normalize_adj: False
-  residual: False
+  residual: True
   linegraph: True
   lgvariant: 12
 optim:

@@ -110,8 +110,8 @@ class GINEConvLayer(nn.Module):
 
         batch.x = self.model(batch.x, batch.edge_index, batch.edge_attr)
 
-        batch.x = self.batchNorm(batch.x)
         batch.x = F.relu(batch.x)
+        batch.x = self.batchNorm(batch.x)
         batch.x = F.dropout(batch.x, p=self.dropout, training=self.training)
 
         if self.residual:

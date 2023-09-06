@@ -8,10 +8,10 @@ dropoutrate=0.0
 i=1
 
 # for ((i=0;i<length;i++))
-for encoderVersion in 3 4
+for encoderVersion in 2 3 4 5 6
 do
-  # python main.py --repeat 3 \
-  python main.py \
+  # python main.py \
+  python main.py --repeat 2 \
     --cfg configs/LG/peptides-func/$DATASET-$model+LapPE.yaml \
     wandb.use True \
     wandb.project lrgb \

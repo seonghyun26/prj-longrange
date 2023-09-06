@@ -1,17 +1,28 @@
 cd ../../
 DATASET="peptides-struct"
 model="GCN"
+layer=("5" "15" "25")
+hdim=("268" "162" "132")
+length=${#layer[@]}
+i=0
+encoderVersion=2
+dropoutrate=0.01
 
-for layer in 15
+for msgDirection in "single" "both"
 do
-  # python main.py \
-  python main.py --repeat 3 \
-    --cfg configs/$model/$DATASET-$model+LapPE.yaml \
-    wandb.use True \
-    wandb.project lrgb \
-    gnn.layers_mp 15 \
-    gnn.dim_inner 175 \
-    dataset.node_encoder_bn True \
-    dataset.edge_encoder_bn True
-  sleep 10
+  for residual in "False" "True"
+  do
+  # python main.py --repeat 3 \
+    python main.py \
+      --cfg configs/$model/$DATASET-$model+LapPE.yaml \
+      wandb.use True \
+      wandb.project lrgb \
+      gnn.layers_mp ${layer[i]} \
+      gnn.dim_inner ${hdim[i]} \
+      gnn.dropout $dropoutrate \
+      gnn.residual $residual \
+      gnn.msg_direction $msgDirection \
+      posenc_LapPE.version $encoderVersion
+    sleep 10
+  done
 done

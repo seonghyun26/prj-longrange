@@ -12,6 +12,8 @@ def dataset_cfg(cfg):
     cfg.dataset.edge_encoder_num_types = 0
 
     # VOC/COCO Superpixels dataset version based on SLIC compactness parameter.
-    cfg.dataset.slic_compactness = 10
+    # cfg.dataset.slic_compactness = 10
+    cfg.dataset.slic_compactness = 30
+
 
 register_config('dataset_cfg', dataset_cfg)
