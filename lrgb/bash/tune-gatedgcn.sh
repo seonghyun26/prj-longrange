@@ -1,13 +1,13 @@
 cd ../
 
-DATASET=$1
+DATASET="peptides-func"
 # peptides-func
 # peptides-struct
 # vocsuperpixels
-model="GCN"
-layer=("10" "15" "20")
-hdim=("192" "162" "144")
 
+layer=("15" "20" "25")
+hdim=("78" "66" "60")
+model="GatedGCN"
 for i in 0 1 2
 do
   python main.py \
@@ -16,6 +16,7 @@ do
     wandb.project lrgb-table \
     wandb.use True \
     gnn.layers_mp ${layer[i]} \
-    gnn.dim_inner ${hdim[i]}
+    gnn.dim_inner ${hdim[i]} \
+    optim.max_epoch 350
   sleep 10
 done

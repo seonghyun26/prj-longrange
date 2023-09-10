@@ -19,7 +19,7 @@ from graphgps.loader.dataset.malnet_tiny import MalNetTiny
 from graphgps.loader.dataset.voc_superpixels import VOCSuperpixels
 from graphgps.loader.dataset.voc_superpixels_lg import VOCSuperpixels_lg
 from graphgps.loader.dataset.voc_superpixels_lg_vn import VOCSuperpixels_lg_vn
-from graphgps.loader.dataset.voc_superpixels_lg_ed import VOCSuperpixels_lg_ed
+from graphgps.loader.dataset.voc_superpixels_lg_bt import VOCSuperpixels_lg_bt
 from graphgps.loader.split_generator import (prepare_splits,
                                              set_dataset_splits)
 from graphgps.transform.posenc_stats import compute_posenc_stats
@@ -122,8 +122,8 @@ def load_dataset_master(format, name, dataset_dir):
         elif pyg_dataset_id == 'VOCSuperpixels_lg_vn':
             dataset = preformat_VOCSuperpixels_lg_vn(dataset_dir, name,
                                                cfg.dataset.slic_compactness)
-        elif pyg_dataset_id == 'VOCSuperpixels_lg_ed':
-            dataset = preformat_VOCSuperpixels_lg_ed(dataset_dir, name,
+        elif pyg_dataset_id == 'VOCSuperpixels_lg_bt':
+            dataset = preformat_VOCSuperpixels_lg_bt(dataset_dir, name,
                                                cfg.dataset.slic_compactness)
 
         elif pyg_dataset_id == 'COCOSuperpixels':
@@ -193,7 +193,7 @@ def load_dataset_master(format, name, dataset_dir):
                     pecfg.kernel.times = list(eval(pecfg.kernel.times_func))
                 logging.info(f"Parsed {pe_name} PE kernel times / steps: "
                              f"{pecfg.kernel.times}")
-    if pe_enabled_list and format != 'PyG-VOCSuperpixels_lg':
+    if pe_enabled_list and format != 'PyG-VOCSuperpixels_lg' and format != 'PyG-VOCSuperpixels_lg_bt':
         start = time.perf_counter()
         logging.info(f"Precomputing Positional Encoding statistics: "
                      f"{pe_enabled_list} for all graphs...")
@@ -513,8 +513,8 @@ def preformat_Peptides(dataset_dir, name):
             PeptidesFunctional_LG_backtrack_Dataset
         from graphgps.loader.dataset.peptides_functional_lg_vn import \
             PeptidesFunctional_LG_VN_Dataset
-        # from graphgps.loader.dataset.peptides_functional_lg_bb import \
-        #     PeptidesFunctional_LG_BB_Dataset
+        from graphgps.loader.dataset.peptides_functional_lg_bb import \
+            PeptidesFunctional_LG_BB_Dataset
         from graphgps.loader.dataset.peptides_structural import \
             PeptidesStructuralDataset
         from graphgps.loader.dataset.peptides_structural_lg import \
@@ -539,8 +539,8 @@ def preformat_Peptides(dataset_dir, name):
         dataset = PeptidesFunctional_LG_backtrack_Dataset(dataset_dir)
     elif dataset_type == 'functional_lg_vn':
         dataset = PeptidesFunctional_LG_VN_Dataset(dataset_dir)
-    # elif dataset_type == 'functional_lg_bb':
-    #     dataset = PeptidesFunctional_LG_BB_Dataset(dataset_dir)
+    elif dataset_type == 'functional_lg_bb':
+        dataset = PeptidesFunctional_LG_BB_Dataset(dataset_dir)
     elif dataset_type == 'structural':
         dataset = PeptidesStructuralDataset(dataset_dir)
     elif dataset_type == 'structural_lg':
@@ -620,6 +620,22 @@ def preformat_VOCSuperpixels_lg(dataset_dir, name, slic_compactness):
     """
     dataset = join_dataset_splits(
         [VOCSuperpixels_lg(root=dataset_dir, name=name,
+                        slic_compactness=slic_compactness,
+                        split=split)
+         for split in ['train', 'val', 'test']]
+    )
+    return dataset
+
+def preformat_VOCSuperpixels_lg_bt(dataset_dir, name, slic_compactness):
+    """Load and preformat VOCSuperpixels dataset.
+
+    Args:
+        dataset_dir: path where to store the cached dataset
+    Returns:
+        PyG dataset object
+    """
+    dataset = join_dataset_splits(
+        [VOCSuperpixels_lg_bt(root=dataset_dir, name=name,
                         slic_compactness=slic_compactness,
                         split=split)
          for split in ['train', 'val', 'test']]

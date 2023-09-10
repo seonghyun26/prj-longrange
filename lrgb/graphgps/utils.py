@@ -5,6 +5,8 @@ from torch_geometric.utils import remove_self_loops
 from torch_scatter import scatter
 
 from yacs.config import CfgNode
+from torch_geometric.graphgym.config import cfg
+
 
 
 def negate_edge_index(edge_index, batch=None):
@@ -130,13 +132,24 @@ def make_wandb_name(cfg):
     
     model_name += str(cfg.gnn.layers_mp)
     
-    lgnn_name =""
-    if cfg.gnn.linegraph:
-        lgnn_name += "LG"
-        lgnn_name += ".v"+str(cfg.gnn.lgvariant)
+    # if cfg.posenc_LapPE.enable:
+    #     model_name += "+LP"
+    # elif cfg.posenc_RWSE.enable:
+    #     model_name += "+RW"
+    encoder_pe = cfg.dataset.node_encoder_name.split('+', 1)
+    if len(encoder_pe) > 1:
+        if encoder_pe[1] == 'LapPE':
+            model_name += "+LP"
+        elif encoder_pe[1] == 'RWSE':
+            model_name += "+RW"
+    
+    # lgnn_name =""
+    # if cfg.gnn.linegraph:
+    #     lgnn_name += "LG"
+    #     lgnn_name += ".v"+str(cfg.gnn.lgvariant)
         
     # Compose wandb run name.
-    name = f"{dataset_name}.{model_name}.{lgnn_name}"
+    name = f"{dataset_name}.{model_name}"
     
         
     return name

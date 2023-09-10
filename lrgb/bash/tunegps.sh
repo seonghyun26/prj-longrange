@@ -9,4 +9,6 @@ DATASET=$1
 python main.py \
   --cfg configs/tuned/$DATASET-GPS.yaml \
   wandb.project lrgb-table \
-  wandb.use True
+  wandb.use True \
+  optim.max_epoch 400 \
+  train.batch_size 50

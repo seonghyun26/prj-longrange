@@ -1,23 +1,23 @@
 out_dir: results
-metric_best: mae
-metric_agg: argmin
+metric_best: f1
 wandb:
   use: True
-  project: peptides-struct
+  project: Pascal
 dataset:
-  format: OGB
-  name: peptides-structural_lg
-  task: graph
-  task_type: regression
+  format: PyG-VOCSuperpixels_lg
+  name: edge_wt_only_coord
+  slic_compactness: 30
+  task: graph  # Even if VOC is node-level task, this needs to be set as 'graph'
+  task_type: classification
   transductive: False
   node_encoder: True
-  node_encoder_name: AtomLG+LapPE
+  node_encoder_name: VOCNodeLG+LapPE
   node_encoder_bn: False
   edge_encoder: True
-  edge_encoder_name: BondLG
+  edge_encoder_name: VOCEdgeLG
   edge_encoder_bn: False
 posenc_LapPE:
-  enable: True
+  enable: False
   eigen:
     laplacian_norm: none
     eigvec_norm: L2
@@ -35,29 +35,29 @@ posenc_RWSE:
   raw_norm_type: BatchNorm
 train:
   mode: custom
-  batch_size: 200
+  batch_size: 30
   eval_period: 1
   ckpt_period: 100
   # eval_smoothing_metrics: True
 model:
   type: custom_gnn
-  loss_fun: l1
-  graph_pooling: mean
+  loss_fun: weighted_cross_entropy
 gnn:
-  head: mlp_graph
+  head: inductive_node
   layers_pre_mp: 0
-  layers_mp: 8
-  layers_post_mp: 3
-  dim_inner: 102
+  layers_mp: 10
+  layers_post_mp: 2
+  dim_inner: 96
   layer_type: gatedgcnconv
   act: gelu
   residual: True
-  dropout: 0.1
+  dropout: 0.2
+  linegraph: True
+  lgvariant: 20
 optim:
-  clip_grad_norm: True
   optimizer: adamW
   weight_decay: 0.0
   base_lr: 0.001
-  max_epoch: 250
+  max_epoch: 200
   scheduler: cosine_with_warmup
-  num_warmup_epochs: 5
+  num_warmup_epochs: 50

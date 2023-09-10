@@ -93,8 +93,6 @@ class LineGraphLapPENodeEncoder(torch.nn.Module):
             emb = torch.nn.Embedding(dim, self.emb_dim)
             torch.nn.init.xavier_uniform_(emb.weight.data)
             self.bond_embedding_list.append(emb)
-            
-        # self.gather = nn.Linear(emb_dim*3, emb_dim)
         
         # NOTE: LapPE
         self.linear_x = nn.Linear(emb_dim, emb_dim - dim_pe)
@@ -110,6 +108,7 @@ class LineGraphLapPENodeEncoder(torch.nn.Module):
         layers.append(nn.Linear(2 * dim_pe, dim_pe))
         layers.append(nn.ReLU())
         self.pe_encoder = nn.Sequential(*layers)
+        # self.linear_last = nn.Linear(emb_dim, emb_dim)
         
     def lapPE(self, batch):
         if not (hasattr(batch, 'EigVals') and hasattr(batch, 'EigVecs')):
@@ -151,7 +150,7 @@ class LineGraphLapPENodeEncoder(torch.nn.Module):
         if self.version == 1:
             batch.x = edge_encoded_features - node_encoded_features1 + node_encoded_features2
         elif self.version == 2:
-            batch.x = torch.cat([edge_encoded_features, node_encoded_features1, node_encoded_features2], dim=1)
+            batch.x = torch.cat([node_encoded_features1, node_encoded_features2, edge_encoded_features], dim=1)
         elif self.version == 3:
             batch.x = torch.cat([node_encoded_features1, node_encoded_features2], dim=1)
         elif self.version == 4:
@@ -163,11 +162,6 @@ class LineGraphLapPENodeEncoder(torch.nn.Module):
         else:
             batch.x = torch.cat([node_encoded_features1, node_encoded_features2], dim=1)
     
-        
-        # if self.version == 8:
-        #     pos_enc = self.lapPE(batch)
-        #     batch.x = batch.x + pos_enc
-        # else:
             
         # NOTE: LapPE
         if self.expand_x:
@@ -178,6 +172,9 @@ class LineGraphLapPENodeEncoder(torch.nn.Module):
         pos_enc = self.lapPE(batch)
         batch.x = torch.cat((h, pos_enc), 1)
         
+        # NOTE: preprocess
+        # batch.x = self.linear_last(batch.x)
+        
         batch.pe_LapPE = pos_enc
         
         return batch
@@ -185,6 +182,136 @@ class LineGraphLapPENodeEncoder(torch.nn.Module):
 register_node_encoder("AtomLG+LapPE", LineGraphLapPENodeEncoder)
 
 
+
+class LineGraphRWSENodeEncoder(torch.nn.Module):
+    def __init__(self, emb_dim, num_classes=None):
+        super().__init__()
+        
+        from ogb.utils.features import get_atom_feature_dims, get_bond_feature_dims
+
+
+        self.atom_embedding_list = torch.nn.ModuleList()
+        self.bond_embedding_list = torch.nn.ModuleList()
+        self.version = cfg.posenc_LapPE.version
+        self.expand_x = cfg.posenc_RWSE.enable
+        self.kernel_type="RWSE"
+        dim_pe = cfg.posenc_LapPE.dim_pe
+        
+        if not self.expand_x:
+            emb_dim = emb_dim - dim_pe
+
+        if self.version == 2:
+            assert( emb_dim % 3 == 0)
+            self.emb_dim = emb_dim // 3
+        elif self.version == 3:
+            assert( emb_dim % 2 == 0)
+            self.emb_dim = emb_dim // 2
+        elif self.version == 4:
+            self.emb_dim = emb_dim 
+        elif self.version == 5:
+            self.emb_dim = emb_dim 
+            self.linear_compress = nn.Linear(emb_dim * 2, emb_dim)
+        elif self.version == 6:
+            self.emb_dim = emb_dim 
+            self.linear_compress = nn.Linear(emb_dim * 3, emb_dim)
+        else:
+            assert( emb_dim % 2 == 0)
+            self.emb_dim = emb_dim
+        
+        for i, dim in enumerate(get_atom_feature_dims()):
+            emb = torch.nn.Embedding(dim, self.emb_dim)
+            torch.nn.init.xavier_uniform_(emb.weight.data)
+            self.atom_embedding_list.append(emb)
+        for i, dim in enumerate(get_bond_feature_dims()):
+            emb = torch.nn.Embedding(dim, self.emb_dim)
+            torch.nn.init.xavier_uniform_(emb.weight.data)
+            self.bond_embedding_list.append(emb)
+        
+        # NOTE: RWSE
+        pecfg = getattr(cfg, f"posenc_{self.kernel_type}")
+        dim_pe = pecfg.dim_pe  # Size of the kernel-based PE embedding
+        num_rw_steps = len(pecfg.kernel.times)
+        model_type = pecfg.model.lower()  # Encoder NN model type for PEs
+        n_layers = pecfg.layers  # Num. layers in PE encoder model
+        norm_type = pecfg.raw_norm_type.lower()  # Raw PE normalization layer type
+        self.pass_as_var = pecfg.pass_as_var  # Pass PE also as a separate variable
+
+        if emb_dim - dim_pe < 1:
+            raise ValueError(f"PE dim size {dim_pe} is too large for "
+                             f"desired embedding size of {emb_dim}.")
+
+        if self.expand_x:
+            self.linear_x = nn.Linear(emb_dim, emb_dim - dim_pe)
+
+        if norm_type == 'batchnorm':
+            self.raw_norm = nn.BatchNorm1d(num_rw_steps)
+        else:
+            self.raw_norm = None
+
+        if model_type == 'linear':
+            self.pe_encoder = nn.Linear(num_rw_steps, dim_pe)
+        else:
+            raise ValueError(f"{self.__class__.__name__}: Does not support "
+                             f"'{model_type}' encoder model.")
+        
+    def RWSE(self, batch):
+        pestat_var = f"pestat_{self.kernel_type}"
+        if not hasattr(batch, pestat_var):
+            raise ValueError(f"Precomputed '{pestat_var}' variable is "
+                             f"required for {self.__class__.__name__}; set "
+                             f"config 'posenc_{self.kernel_type}.enable' to "
+                             f"True, and also set 'posenc.kernel.times' values")
+        
+        pos_enc = getattr(batch, pestat_var)  # (Num nodes) x (Num kernel times)
+        # pos_enc = batch.rw_landing  # (Num nodes) x (Num kernel times)
+        if self.raw_norm:
+            pos_enc = self.raw_norm(pos_enc)
+        pos_enc = self.pe_encoder(pos_enc)  # (Num nodes) x dim_pe
+        
+        return pos_enc
+    
+    def forward(self, batch):
+        edge_encoded_features = 0
+        node_encoded_features1 = 0
+        node_encoded_features2 = 0
+        
+        
+        for EdgeIdx in range(3):
+            edge_encoded_features += self.bond_embedding_list[EdgeIdx](batch.x[:, EdgeIdx])
+        for AtomIdx in range(3, 12):
+            node_encoded_features1 += self.atom_embedding_list[AtomIdx-3](batch.x[:, AtomIdx])
+        for AtomIdx in range(12, 21):
+            node_encoded_features2 += self.atom_embedding_list[AtomIdx-12](batch.x[:, AtomIdx])
+        
+        if self.version == 1:
+            batch.x = edge_encoded_features - node_encoded_features1 + node_encoded_features2
+        elif self.version == 2:
+            batch.x = torch.cat([node_encoded_features1, node_encoded_features2, edge_encoded_features], dim=1)
+        elif self.version == 3:
+            batch.x = torch.cat([node_encoded_features1, node_encoded_features2], dim=1)
+        elif self.version == 4:
+            batch.x = (node_encoded_features1 + node_encoded_features2) / 2
+        elif self.version == 5:
+            batch.x = self.linear_compress(torch.cat([node_encoded_features1, node_encoded_features2], dim=1))
+        elif self.version == 6:
+            batch.x = self.linear_compress(torch.cat([edge_encoded_features, node_encoded_features1, node_encoded_features2], dim=1))
+        else:
+            batch.x = torch.cat([node_encoded_features1, node_encoded_features2], dim=1)
+    
+
+        # NOTE: RWSE
+        if self.expand_x:
+            h = self.linear_x(batch.x)
+        else:
+            h = batch.x
+        
+        pos_enc = self.RWSE(batch)
+        batch.x = torch.cat((h, pos_enc), 1)
+        batch.pe_RWSE = pos_enc
+        
+        return batch
+
+register_node_encoder("AtomLG+RWSE", LineGraphRWSENodeEncoder)
 
 class LineGraphEdgeEncoder(torch.nn.Module):
     def __init__(self, emb_dim):

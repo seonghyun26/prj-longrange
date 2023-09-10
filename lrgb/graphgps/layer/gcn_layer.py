@@ -6,10 +6,14 @@ import torch_geometric.nn as pyg_nn
 from torch_geometric.graphgym.models.layer import LayerConfig
 from torch_geometric.graphgym.register import register_layer
 
+from torch_geometric.graphgym import cfg
+import torch_geometric.graphgym.register as register
+
+
 class GCNConvLayer(nn.Module):
     """GCN Layer 
     """
-    def __init__(self, dim_in, dim_out, dropout, residual, batchNormUse=True):
+    def __init__(self, dim_in, dim_out, dropout, residual):
         super().__init__()
         
         self.dim_in = dim_in
@@ -17,18 +21,21 @@ class GCNConvLayer(nn.Module):
         self.residual = residual
         self.dropout = dropout 
         
-        self.model = pyg_nn.GCNConv(dim_in, dim_out)
-        
-        self.batchNorm = nn.BatchNorm1d(dim_out, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+        self.act = nn.Sequential(
+            register.act_dict[cfg.gnn.act](),
+            # nn.BatchNorm1d(dim_out, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True),
+            nn.Dropout(self.dropout),
+        )
+        self.model = pyg_nn.GCNConv(dim_in, dim_out, add_self_loops=False)
         
     def forward(self, batch):
         x_in = batch.x
         
         batch.x = self.model(batch.x, batch.edge_index)
-        
-        batch.x = F.relu(batch.x)
-        batch.x = self.batchNorm(batch.x)
-        batch.x = F.dropout(batch.x, p=self.dropout, training=self.training)
+        batch.x = self.act(batch.x)
+        # batch.x = F.relu(batch.x)
+        # batch.x = F.dropout(batch.x, p=self.dropout, training=self.training)
+        # batch.x = self.batchNorm(batch.x)
         
         if self.residual:
             batch.x = x_in + batch.x  # residual connection
