@@ -64,24 +64,50 @@ class GNNInductiveEdgeHead(nn.Module):
                 f'Unsupported edge decoding {cfg.model.edge_decoding}.')
 
         stats = {}
-        for data in batch.to_data_list():
+        
+        num_graphs = batch.num_graphs
+        graph_size_list = torch.cumsum(torch.cat([
+            torch.zeros(1).to(batch.x.device),
+            batch.org_graph_size
+        ]), dim=0, dtype=torch.int64)
+        edge_label_size_list = torch.cumsum(torch.cat([
+            torch.zeros(1).to(batch.x.device),
+            batch.edge_label_size
+        ]), dim=0, dtype=torch.int64)
+        
+        # for data in batch.to_data_list():
+        for graphIdx in range(num_graphs):
             # print(data.num_nodes)
             # print(data.edge_index_labeled)
             # print(data.edge_label)
-            pred = data.x @ data.x.transpose(0, 1)
+            # pred = data.x @ data.x.transpose(0, 1)
+            x = batch.x[graph_size_list[graphIdx]:graph_size_list[graphIdx+1]]
+            pred = x @ x.transpose(0, 1)
             # print(pred.shape)
 
-            pos_edge_index = data.edge_index_labeled[:, data.edge_label == 1]
+            # pos_edge_index = data.edge_index_labeled[:, data.edge_label == 1]
+            edge_index_labeled = batch.edge_index_labeled[:, edge_label_size_list[graphIdx]:edge_label_size_list[graphIdx+1]]
+            edge_label = batch.edge_label[edge_label_size_list[graphIdx]:edge_label_size_list[graphIdx+1]]
+            pos_edge_index = edge_index_labeled[:, edge_label == 1]
+            # print(x.shape[0])
+            # print(edge_index_labeled)
+            # print(edge_label)
+            
             num_pos_edges = pos_edge_index.shape[1]
             # print(pos_edge_index, num_pos_edges)
 
             pred_pos = pred[pos_edge_index[0], pos_edge_index[1]]
             # print(pred_pos)
 
+            assert(torch.max(pos_edge_index[0]) < x.shape[0])
+            assert(torch.max(pos_edge_index[1]) < x.shape[0])
+            
             if num_pos_edges > 0:
-                neg_mask = torch.ones([num_pos_edges, data.num_nodes],
-                                      dtype=torch.bool)
+                # neg_mask = torch.ones([num_pos_edges, data.num_nodes],dtype=torch.bool)
+                neg_mask = torch.ones([num_pos_edges, x.shape[0]],dtype=torch.bool)
+                
                 neg_mask[torch.arange(num_pos_edges), pos_edge_index[1]] = False
+                
                 pred_neg = pred[pos_edge_index[0]][neg_mask].view(num_pos_edges, -1)
                 # print(pred_neg, pred_neg.shape)
                 mrr_list = self._eval_mrr(pred_pos, pred_neg, 'torch')

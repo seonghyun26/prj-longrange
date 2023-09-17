@@ -23,10 +23,11 @@ class GCNConvLayer(nn.Module):
         
         self.act = nn.Sequential(
             register.act_dict[cfg.gnn.act](),
-            # nn.BatchNorm1d(dim_out, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True),
+            nn.BatchNorm1d(dim_out, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True),
             nn.Dropout(self.dropout),
         )
-        self.model = pyg_nn.GCNConv(dim_in, dim_out, add_self_loops=False)
+        # self.model = pyg_nn.GCNConv(dim_in, dim_out, add_self_loops=False)
+        self.model = pyg_nn.GCNConv(dim_in, dim_out)
         
     def forward(self, batch):
         x_in = batch.x

@@ -9,10 +9,12 @@ from graphgps.layer.gatedgcn_layer import GatedGCNLayer
 from graphgps.layer.gine_conv_layer import GINEConvLayer
 from graphgps.layer.gcnii_conv_layer import GCN2ConvLayer
 from graphgps.layer.gat_conv_layer import GATConvLayer
+from graphgps.layer.gatv2_conv_layer import GATv2ConvLayer
 from graphgps.layer.mlp_layer import MLPLayer
 from graphgps.layer.gcn_layer import GCNConvLayer
-from graphgps.layer.gat_layer import GATConvLayer
-from graphgps.layer.lgnn_layer import graph2linegraph, linegraph2graph, lg2graphNode
+from graphgps.layer.graphsage_conv_layer import SAGEConvLayer
+from graphgps.layer.resgatedgcn_layer import ResGatedConvLayer
+from graphgps.layer.lgnn_layer import graph2linegraph, linegraph2graph, lg2graphNode, pcqmPostProcess
 
 from torch_scatter import scatter
 from torch_geometric.nn import JumpingKnowledge
@@ -25,6 +27,8 @@ class CustomGNN(torch.nn.Module):
 
     def __init__(self, dim_in, dim_out):
         super().__init__()
+        # if cfg.gnn.lgvariant == 30:
+        #     self.g2lg = g2lg()
         self.encoder = FeatureEncoder(dim_in)
         dim_in = self.encoder.dim_in
 
@@ -63,17 +67,13 @@ class CustomGNN(torch.nn.Module):
         
         if cfg.gnn.linegraph and cfg.gnn.lgvariant >= 20 and cfg.gnn.lgvariant <= 29:
             layers.append(lg2graphNode())
-        # if cfg.dataset.task == 'classification':
-        #     layers.append(lg2graphNode())
+        elif cfg.gnn.linegraph and cfg.gnn.lgvariant >= 30 and cfg.gnn.lgvariant <= 39:
+            layers.append(pcqmPostProcess())
         self.gnn_layers = torch.nn.Sequential(*layers)
 
         GNNHead = register.head_dict[cfg.gnn.head]
         
-        if cfg.gnn.lgvariant == 13:
-            self.post_mp = GNNHead(dim_in=cfg.gnn.dim_inner * (cfg.gnn.layers_mp + 1), dim_out=dim_out)
-            # self.jump = JumpingKnowledge("cat")
-        else:
-            self.post_mp = GNNHead(dim_in=cfg.gnn.dim_inner, dim_out=dim_out)
+        self.post_mp = GNNHead(dim_in=cfg.gnn.dim_inner, dim_out=dim_out)
 
             
 
@@ -86,10 +86,16 @@ class CustomGNN(torch.nn.Module):
             return GCN2ConvLayer
         elif model_type == 'gatconv':
             return GATConvLayer
+        elif model_type == 'gatv2conv':
+            return GATv2ConvLayer
         elif model_type == 'mlp':
             return MLPLayer
         elif model_type == "gcnconv":
             return GCNConvLayer
+        elif model_type == "sageconv":
+            return SAGEConvLayer
+        elif model_type == "resgatedconv":
+            return ResGatedConvLayer
         else:
             raise ValueError("Model {} unavailable".format(model_type))
 
@@ -99,33 +105,16 @@ class CustomGNN(torch.nn.Module):
                 batch.x0 = batch.x # gcniiconv needs x0 for each layer
                 batch = module(batch)
             else:
-                if cfg.gnn.lgvariant == 13 and idx == 1 :
-                    xJump = [batch.x]
-                    for layerIdx, layer in enumerate(module):
-                        batch = layer(batch)
-                        xJump.append(batch.x)
-                    # batch.x = self.jump(xJump)
-                    batch.x = torch.cat(xJump, dim=1)
-                elif idx != 3:
-                    batch = module(batch)
-                # if cfg.gnn.lgvariant == 30 and idx == 1:
+                batch = module(batch)
+                # if cfg.gnn.lgvariant == 13 and idx == 1 :
+                #     xJump = [batch.x]
                 #     for layerIdx, layer in enumerate(module):
-                #         if layerIdx == 0:
-                #             batch = layer(batch)
-                #         elif layerIdx == 1:
-                #             batch.edge_index_nb = batch.edge_index
-                #             batch.edge_attr_nb = batch.edge_attr
-                #             batch.edge_index = batch.edge_index_bb
-                #             batch.edge_attr = batch.edge_attr_bb
-                #             batch = layer(batch)  
-                #         elif layerIdx % 2 == 0:
-                #             batch.edge_index = batch.edge_index_nb
-                #             batch.edge_attr = batch.edge_attr_nb
-                #             batch = layer(batch)
-                #         else:
-                #             batch.edge_index = batch.edge_index_bb
-                #             batch.edge_attr = batch.edge_attr_bb
-                #             batch = layer(batch)  
+                #         batch = layer(batch)
+                #         xJump.append(batch.x)
+                #     # batch.x = self.jump(xJump)
+                #     batch.x = torch.cat(xJump, dim=1)
+                # elif idx != 3:
+                #     batch = module(batch)
         return batch
 
 register_network('custom_gnn', CustomGNN)

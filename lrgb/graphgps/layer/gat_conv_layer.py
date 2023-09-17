@@ -16,16 +16,19 @@ class GATConvLayer(nn.Module):
         self.dropout = dropout
         self.residual = residual
 
+        self.act = nn.Sequential(
+            register.act_dict[cfg.gnn.act](),
+            nn.BatchNorm1d(dim_out, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True),
+            nn.Dropout(self.dropout),
+        )
         self.model = pyg_nn.GATConv(self.dim_in, self.dim_in)
-        # alpha value is set using results from the GCNII paper
 
     def forward(self, batch):
         x_in = batch.x
 
         batch.x = self.model(batch.x, batch.edge_index, batch.edge_attr)
+        batch.x = self.model(batch.x, batch.edge_index)
 
-        batch.x = F.relu(batch.x)
-        batch.x = F.dropout(batch.x, p=self.dropout, training=self.training)
 
         if self.residual:
             batch.x = x_in + batch.x  # residual connection

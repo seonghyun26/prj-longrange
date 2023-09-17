@@ -51,12 +51,12 @@ gnn:
   layer_type: gcnconv
   act: gelu
   residual: True
-  dropout: 0.0
+  dropout: 0.1
   linegraph: True
   lgvariant: 20
 optim:
   optimizer: adamW
-  weight_decay: 0.0
+  weight_decay: 0.01
   base_lr: 0.001
   max_epoch: 200
   scheduler: cosine_with_warmup

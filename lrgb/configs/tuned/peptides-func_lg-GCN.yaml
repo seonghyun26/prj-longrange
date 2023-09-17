@@ -42,6 +42,7 @@ model:
   loss_fun: cross_entropy
   graph_pooling: mean
 gnn:
+  batchnorm: True
   head: mlp_graph
   layers_pre_mp: 0
   layers_mp: 6
@@ -57,10 +58,6 @@ optim:
   optimizer: adamW
   weight_decay: 0.0
   base_lr: 0.001
-  max_epoch: 250
+  max_epoch: 300
   scheduler: cosine_with_warmup
-  num_warmup_epochs: 5
-  steps:
-  - 40
-  - 70
-  - 100
+  num_warmup_epochs: 50

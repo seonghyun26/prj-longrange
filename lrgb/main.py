@@ -143,13 +143,7 @@ if __name__ == '__main__':
         cfg.seed = seed
         cfg.run_id = run_id
         seed_everything(cfg.seed)
-        if cfg.gnn.lgvariant == 21:
-            cfg.device = 1
-        elif cfg.gnn.lgvariant == 22:
-            cfg.device = 4
-            # cfg.device = select_gpu_with_most_free_memory()
-        else:
-            auto_select_device()
+        auto_select_device()
         
         if cfg.train.finetune:
             cfg = load_pretrained_model_cfg(cfg)

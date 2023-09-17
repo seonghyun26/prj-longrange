@@ -5,7 +5,8 @@ wandb:
   project: Pascal
 dataset:
   format: PyG-VOCSuperpixels
-  name: edge_wt_region_boundary
+  # name: edge_wt_region_boundary
+  name: edge_wt_only_coord
   slic_compactness: 30
   task: graph  # Even if VOC is node-level task, this needs to be set as 'graph'
   task_type: classification
@@ -38,7 +39,7 @@ train:
   batch_size: 50
   eval_period: 1
   ckpt_period: 100
-  eval_smoothing_metrics: True
+  # eval_smoothing_metrics: True
 model:
   type: GPSModel
   loss_fun: weighted_cross_entropy
@@ -46,7 +47,7 @@ gt:
   layer_type: CustomGatedGCN+Transformer
   layers: 8
   n_heads: 4
-  dim_hidden: 66  # `gt.dim_hidden` must match `gnn.dim_inner`
+  dim_hidden: 60  # `gt.dim_hidden` must match `gnn.dim_inner`
   dropout: 0.1
   attn_dropout: 0.5
   layer_norm: False
@@ -55,7 +56,7 @@ gnn:
   head: inductive_node
   layers_pre_mp: 0
   layers_post_mp: 2
-  dim_inner: 66  # `gt.dim_hidden` must match `gnn.dim_inner`
+  dim_inner: 60  # `gt.dim_hidden` must match `gnn.dim_inner`
   batchnorm: True
   act: gelu
   dropout: 0.1

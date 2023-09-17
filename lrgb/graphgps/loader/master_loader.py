@@ -20,6 +20,9 @@ from graphgps.loader.dataset.voc_superpixels import VOCSuperpixels
 from graphgps.loader.dataset.voc_superpixels_lg import VOCSuperpixels_lg
 from graphgps.loader.dataset.voc_superpixels_lg_vn import VOCSuperpixels_lg_vn
 from graphgps.loader.dataset.voc_superpixels_lg_bt import VOCSuperpixels_lg_bt
+
+from graphgps.loader.dataset.zinc_lg import ZINC_lg
+
 from graphgps.loader.split_generator import (prepare_splits,
                                              set_dataset_splits)
 from graphgps.transform.posenc_stats import compute_posenc_stats
@@ -469,16 +472,15 @@ def preformat_PCQM4Mv2Contact_lg(dataset_dir, name):
     try:
         # Load locally to avoid RDKit dependency until necessary
         from graphgps.loader.dataset.pcqm4mv2_contact_lg import \
-            PygPCQM4Mv2ContactDataset_lg, \
-            structured_neg_sampling_transform, \
+            PygPCQM4Mv2ContactDataset_LG, \
             structured_neg_sampling_transform_lg
     except Exception as e:
-        logging.error('ERROR: Failed to import PygPCQM4Mv2ContactDataset_lg, '
+        logging.error('ERROR: Failed to import PygPCQM4Mv2ContactDataset_LG, '
                       'make sure RDKit is installed.')
         raise e
 
     split_name = name.split('-', 1)[1]
-    dataset = PygPCQM4Mv2ContactDataset_lg(dataset_dir)
+    dataset = PygPCQM4Mv2ContactDataset_LG(dataset_dir)
     # Inductive graph-level split (there is no train/test edge split).
     s_dict = dataset.get_idx_split(split_name)
     dataset.split_idxs = [s_dict[s] for s in ['train', 'val', 'test']]
@@ -519,6 +521,8 @@ def preformat_Peptides(dataset_dir, name):
             PeptidesStructuralDataset
         from graphgps.loader.dataset.peptides_structural_lg import \
             PeptidesStructural_LGDataset
+        from graphgps.loader.dataset.peptides_structural_lg_bb import \
+            PeptidesStructural_LG_BB_Dataset
         from graphgps.loader.dataset.peptides_structural_lg_vn import \
             PeptidesStructural_LG_VN_Dataset
         from graphgps.loader.dataset.peptides_structural_lg_nbnb import \
@@ -545,6 +549,8 @@ def preformat_Peptides(dataset_dir, name):
         dataset = PeptidesStructuralDataset(dataset_dir)
     elif dataset_type == 'structural_lg':
         dataset = PeptidesStructural_LGDataset(dataset_dir)
+    elif dataset_type == 'structural_lg_bb':
+        dataset = PeptidesStructural_LG_BB_Dataset(dataset_dir)
     elif dataset_type == 'structural_lg_vn':
         dataset = PeptidesStructural_LG_VN_Dataset(dataset_dir)
     elif dataset_type == 'structural_lg_nbnb':

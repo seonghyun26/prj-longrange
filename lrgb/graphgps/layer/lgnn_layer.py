@@ -146,9 +146,25 @@ class linegraph2graph(nn.Module):
         
         return batch
     
+    
+class g2lg(nn.Module):
+    def __init__(self):
+        super().__init__()
+    
+    def forward(self, batch):
+        batch.x = batch.lg_x
+        batch.edge_index = batch.lg_edge_index
+        batch.edge_attr = batch.lg_edge_attr
+        
+        return batch
+    
+    
+
 class lg2graphNode(nn.Module):
     def __init__(self):
         super().__init__()
+        self.hdim = cfg.gnn.dim_inner // 3
+        # self.linear = nn.Linear(self.dim * 2, self.dim)
     
     def zeroPadding(self, tensor1, tensor2):
         if tensor1.shape[0] > tensor2.shape[0]:
@@ -173,7 +189,13 @@ class lg2graphNode(nn.Module):
         if outgoingNode.shape[0] != incomingNode.shape[0]:
             outgoingNode, incomingNode = self.zeroPadding(outgoingNode, incomingNode)
         
-        batch.x = incomingNode - outgoingNode
+        if cfg.gnn.lgvariant == 21:
+            batch.x = torch.cat([incomingNode[:, :self.hdim*2], outgoingNode[:, self.hdim*2:]], dim=1)
+        elif cfg.gnn.lgvariant == 22:
+            # TODO: mix!
+            batch.x = torch.cat([incomingNode[:, :self.hdim*2], outgoingNode[:, self.hdim*2:]], dim=1)
+        else:
+            batch.x = incomingNode - outgoingNode
         
         del mask
         del padding
@@ -181,5 +203,82 @@ class lg2graphNode(nn.Module):
         del linegraph2graphMapper
         del outgoingNode
         del incomingNode
+        
+        return batch
+    
+class pcqmPostProcess(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.hdim = cfg.gnn.dim_inner // 3
+    
+    def zeroPadding(self, tensor1, tensor2):
+        if tensor1.shape[0] > tensor2.shape[0]:
+            zeros = torch.zeros(tensor1.shape[0] - tensor2.shape[0], tensor1.shape[1]).to(tensor1.device)
+            tensor2 = torch.cat([tensor2, zeros])
+        else:
+            zeros = torch.zeros(tensor2.shape[0] - tensor1.shape[0], tensor1.shape[1]).to(tensor1.device)
+            tensor1 = torch.cat([tensor1, zeros])
+            
+        return tensor1, tensor2
+    
+    def forward(self, batch):
+        # Recover node feature
+        mask = torch.cumsum(torch.cat([torch.zeros(1).to(batch.x.device), batch.org_graph_size]).type(torch.int64)[:-1], dim=0)
+        padding = torch.repeat_interleave(mask, batch.ptr[1:] - batch.ptr[:-1])
+        padded_lg_node_idx = batch.lg_node_idx + padding.repeat(2, 1).T
+        
+        linegraph2graphMapper = padded_lg_node_idx
+        outgoingNode = scatter_mean(batch.x, linegraph2graphMapper[:,0], dim=0)
+        incomingNode = scatter_mean(batch.x, linegraph2graphMapper[:,1], dim=0)
+        
+        if outgoingNode.shape[0] != incomingNode.shape[0]:
+            outgoingNode, incomingNode = self.zeroPadding(outgoingNode, incomingNode)
+        
+        if cfg.gnn.lgvariant == 21 or cfg.gnn.lgvariant == 30:
+            batch.x = torch.cat([incomingNode[:, :self.hdim*2], outgoingNode[:, self.hdim*2:]], dim=1)
+        elif cfg.gnn.lgvariant == 22:
+            batch.x = torch.cat([
+                (incomingNode[:, :self.hdim] + outgoingNode[:, :self.hdim])/2,
+                incomingNode[:, self.hdim:self.hdim*2],
+                outgoingNode[:, self.hdim*2:]
+            ], dim=1)
+        else:
+            batch.x = incomingNode - outgoingNode
+        
+        del mask
+        del padding
+        del padded_lg_node_idx
+        del linegraph2graphMapper
+        del outgoingNode
+        del incomingNode
+        
+        # NOTE: Adjust paddings for edge_index_labeled
+        line_graph_size = torch.cumsum(torch.cat([
+            torch.zeros(1).to(batch.x.device),
+            (batch.ptr[1:] - batch.ptr[:-1])[:-1]
+        ], dim=0), dim=0, dtype=torch.int64)
+        edge_label_size = batch.edge_label_size
+        lineGraphPadding = torch.repeat_interleave(line_graph_size, edge_label_size)
+        
+        graphSize = torch.cumsum(torch.cat([
+            torch.zeros(1).to(batch.x.device),
+            batch.org_graph_size[:-1],
+        ]), dim=0, dtype=torch.int64)
+        graphPadding = torch.repeat_interleave(graphSize, edge_label_size)
+        
+        # edge_index_labeled_new = batch.edge_index_labeled - lineGraphPadding.repeat(2, 1) + graphPadding.repeat(2, 1)
+        edge_index_labeled_new = batch.edge_index_labeled - lineGraphPadding.repeat(2, 1)
+        batch.edge_index_labeled = edge_index_labeled_new
+        
+        # NOTE: batch adjustment
+        batch.ptr = torch.cumsum(torch.cat([
+            torch.zeros(1).to(batch.x.device),
+            batch.org_graph_size,
+        ]), dim=0, dtype=torch.int64)
+        
+        batch.batch = torch.repeat_interleave(
+            torch.arange(batch.org_graph_size.shape[0], device=batch.x.device),
+            batch.org_graph_size
+        )
         
         return batch
