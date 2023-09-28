@@ -17,7 +17,7 @@ dataset:
   edge_encoder_name: VOCEdgeLG
   edge_encoder_bn: False
 posenc_LapPE:
-  enable: False
+  enable: True
   eigen:
     laplacian_norm: none
     eigvec_norm: L2
@@ -26,13 +26,13 @@ posenc_LapPE:
   dim_pe: 16
   layers: 2
   raw_norm_type: none
-posenc_RWSE:
-  enable: True
-  kernel:
-    times_func: range(1,21)
-  model: Linear
-  dim_pe: 28
-  raw_norm_type: BatchNorm
+# posenc_RWSE:
+#   enable: True
+#   kernel:
+#     times_func: range(1,21)
+#   model: Linear
+#   dim_pe: 28
+#   raw_norm_type: BatchNorm
 train:
   mode: custom
   batch_size: 30
@@ -51,7 +51,7 @@ gnn:
   layer_type: gcnconv
   act: gelu
   residual: True
-  dropout: 0.1
+  dropout: 0.2
   linegraph: True
   lgvariant: 20
 optim:

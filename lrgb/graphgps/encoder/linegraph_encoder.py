@@ -150,7 +150,7 @@ class LineGraphLapPENodeEncoder(torch.nn.Module):
         if self.version == 1:
             batch.x = edge_encoded_features - node_encoded_features1 + node_encoded_features2
         elif self.version == 2:
-            batch.x = torch.cat([node_encoded_features1, node_encoded_features2, edge_encoded_features], dim=1)
+            batch.x = torch.cat([edge_encoded_features, node_encoded_features1, node_encoded_features2], dim=1)
         elif self.version == 3:
             batch.x = torch.cat([node_encoded_features1, node_encoded_features2], dim=1)
         elif self.version == 4:

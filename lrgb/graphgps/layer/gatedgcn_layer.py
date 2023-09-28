@@ -1,12 +1,13 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import torch_geometric.graphgym.register as register
 import torch_geometric.nn as pyg_nn
 from torch_geometric.graphgym.models.layer import LayerConfig
+from torch_geometric.graphgym.register import register_layer
 from torch_scatter import scatter
 
 from torch_geometric.graphgym.config import cfg
-from torch_geometric.graphgym.register import register_layer
 
 
 class GatedGCNLayer(pyg_nn.conv.MessagePassing):
@@ -15,9 +16,10 @@ class GatedGCNLayer(pyg_nn.conv.MessagePassing):
         Residual Gated Graph ConvNets
         https://arxiv.org/pdf/1711.07553.pdf
     """
-    def __init__(self, in_dim, out_dim, dropout, residual, lgvariant=-1,
+    def __init__(self, in_dim, out_dim, dropout, residual, act='gelu',
                  equivstable_pe=False, **kwargs):
         super().__init__(**kwargs)
+        self.activation = register.act_dict[act]
         self.A = pyg_nn.Linear(in_dim, out_dim, bias=True)
         self.B = pyg_nn.Linear(in_dim, out_dim, bias=True)
         self.C = pyg_nn.Linear(in_dim, out_dim, bias=True)
@@ -29,16 +31,18 @@ class GatedGCNLayer(pyg_nn.conv.MessagePassing):
         self.EquivStablePE = equivstable_pe
         if self.EquivStablePE:
             self.mlp_r_ij = nn.Sequential(
-                nn.Linear(1, out_dim), nn.ReLU(),
+                nn.Linear(1, out_dim),
+                self.activation(),
                 nn.Linear(out_dim, 1),
                 nn.Sigmoid())
 
         self.bn_node_x = nn.BatchNorm1d(out_dim)
         self.bn_edge_e = nn.BatchNorm1d(out_dim)
+        self.act_fn_x = self.activation()
+        self.act_fn_e = self.activation()
         self.dropout = dropout
         self.residual = residual
         self.e = None
-        self.lgvariant = lgvariant
 
     def forward(self, batch):
         x, e, edge_index = batch.x, batch.edge_attr, batch.edge_index
@@ -67,16 +71,11 @@ class GatedGCNLayer(pyg_nn.conv.MessagePassing):
                               e=e, Ax=Ax,
                               PE=pe_LapPE)
 
-        if self.lgvariant == 6:
-            alpha = 0.7
-            tempx = torch.empty_like(batch.x)
-            tempx[::2] = batch.x[1::2]
-            tempx[1::2] = batch.x[::2]
-            batch.x = alpha * batch.x + (1 - alpha) * tempx
-        
         x = self.bn_node_x(x)
         e = self.bn_edge_e(e)
 
+        # x = self.act_fn_x(x)
+        # e = self.act_fn_e(e)
         x = F.relu(x)
         e = F.relu(e)
 
@@ -152,25 +151,12 @@ class GatedGCNGraphGymLayer(nn.Module):
                                    out_dim=layer_config.dim_out,
                                    dropout=0.,  # Dropout is handled by GraphGym's `GeneralLayer` wrapper
                                    residual=False,  # Residual connections are handled by GraphGym's `GNNStackStage` wrapper
+                                   act=layer_config.act,
                                    **kwargs)
-        
-        self.batchNormUse = layer_config.batch_norm
-        if self.batchNormUse:
-            self.batchNorm = nn.BatchNorm1d(layer_config.dim_out, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
-        # self.dropout = layer_config.dropout 
 
     def forward(self, batch):
-        batch.x = self.model(batch)
-        
-        if self.batchNormUse:
-            batch.x = self.batchNorm(batch.x)
-        
-        batch.x = F.relu(batch.x)
-        
-        # if self.dropout > 0:
-        #     batch.x = F.dropout(batch.x, p=self.dropout, training=self.training)
-        
-        return batch
+        # batch.x = self.model(batch)
+        return self.model(batch)
 
 
 register_layer('gatedgcnconv', GatedGCNGraphGymLayer)

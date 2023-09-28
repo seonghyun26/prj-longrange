@@ -115,6 +115,8 @@ def make_wandb_name(cfg):
     if dataset_name in ['GNNBenchmarkDataset', 'TUDataset']:
         # Shorten some verbose dataset naming schemes.
         dataset_name = ""
+    elif dataset_name == 'GNNBenchmarkDataset_LG':
+        dataset_name = "NBA"
     if cfg.dataset.name != 'none':
         dataset_name += "-" if dataset_name != "" else ""
         if cfg.dataset.name == 'LocalDegreeProfile':

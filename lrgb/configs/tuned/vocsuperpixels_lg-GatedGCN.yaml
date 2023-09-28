@@ -53,7 +53,7 @@ gnn:
   residual: True
   dropout: 0.2
   linegraph: True
-  lgvariant: 20
+  lgvariant: 21
 optim:
   optimizer: adamW
   weight_decay: 0.0

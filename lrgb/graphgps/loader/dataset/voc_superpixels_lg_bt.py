@@ -190,7 +190,7 @@ class VOCSuperpixels_lg_bt(InMemoryDataset):
                     org_graph_size=x_size
                 )
                 
-                # TODO: Preprocess LapPE of line graph
+                # NOTE: Preprocess LapPE of line graph
                 data = compute_posenc_stats(data, ['LapPE'], False, cfg)
 
                 if self.pre_filter is not None and not self.pre_filter(data):

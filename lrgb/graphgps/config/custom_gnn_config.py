@@ -12,6 +12,7 @@ def custom_gnn_cfg(cfg):
     cfg.gnn.linegraph = False
     # line graph variant version
     cfg.gnn.lgvariant = 12
-
+    # Use self loop in gnn layers
+    cfg.gnn.self_loop = True
 
 register_config('custom_gnn', custom_gnn_cfg)

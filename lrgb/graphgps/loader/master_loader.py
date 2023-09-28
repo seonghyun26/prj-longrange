@@ -30,6 +30,9 @@ from graphgps.transform.transforms import (pre_transform_in_memory,
                                            typecast_x, concat_x_and_pos,
                                            clip_graphs_to_size)
 
+from tqdm import tqdm
+# from graphgps.loader.GNNBenchmarkDataset_LG import GNNBenchmarkDataset_LG
+
 
 def log_loaded_dataset(dataset, format, name):
     logging.info(f"[*] Loaded dataset '{name}' from '{format}':")
@@ -106,6 +109,9 @@ def load_dataset_master(format, name, dataset_dir):
 
         if pyg_dataset_id == 'GNNBenchmarkDataset':
             dataset = preformat_GNNBenchmarkDataset(dataset_dir, name)
+            
+        elif pyg_dataset_id == 'GNNBenchmarkDataset_LG':
+            dataset = preformat_GNNBenchmarkDataset_LG(dataset_dir, name)
 
         elif pyg_dataset_id == 'MalNetTiny':
             dataset = preformat_MalNetTiny(dataset_dir, feature_set=name)
@@ -196,7 +202,11 @@ def load_dataset_master(format, name, dataset_dir):
                     pecfg.kernel.times = list(eval(pecfg.kernel.times_func))
                 logging.info(f"Parsed {pe_name} PE kernel times / steps: "
                              f"{pecfg.kernel.times}")
-    if pe_enabled_list and format != 'PyG-VOCSuperpixels_lg' and format != 'PyG-VOCSuperpixels_lg_bt':
+    if pe_enabled_list and (
+        format != 'PyG-VOCSuperpixels_lg'
+        and format != 'PyG-VOCSuperpixels_lg_bt' 
+        and hasattr(dataset, 'EigVals') == False
+    ):
         start = time.perf_counter()
         logging.info(f"Precomputing Positional Encoding statistics: "
                      f"{pe_enabled_list} for all graphs...")
@@ -278,6 +288,31 @@ def preformat_GNNBenchmarkDataset(dataset_dir, name):
          for split in ['train', 'val', 'test']]
     )
     pre_transform_in_memory(dataset, T.Compose(tf_list))
+
+    return dataset
+
+def preformat_GNNBenchmarkDataset_LG(dataset_dir, name):
+    """Load and preformat datasets from PyG's GNNBenchmarkDataset.
+
+    Args:
+        dataset_dir: path where to store the cached dataset
+    Returns:
+        PyG dataset object
+    """
+    dataset = join_dataset_splits(
+        [GNNBenchmarkDataset(root=dataset_dir, name=name, split=split)
+         for split in ['train', 'val', 'test']]
+    )
+    # pre_transform_in_memory(dataset)
+    
+    # if hasattr(dataset, 'EigVals') == False:
+    #     print("Computing Laplacian eigenvalues...")
+    #     for data in tqdm(dataset):
+    #         # NOTE: Preprocess LapPE of line graph
+    #         data = compute_posenc_stats(data, ['LapPE'], False, cfg)
+    #     print("Saved Laplacian eigenvalues..!")
+    # else:
+    #     print("Laplacian eigenvalues found..!")
 
     return dataset
 

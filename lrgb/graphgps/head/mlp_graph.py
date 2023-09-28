@@ -30,7 +30,8 @@ class MLPGraphHead(nn.Module):
         for _ in range(L-1):
             layers.append(nn.Dropout(dropout))
             layers.append(nn.Linear(dim_in, dim_in, bias=True))
-            layers.append(register.act_dict[cfg.gnn.act]())
+            # layers.append(register.act_dict[cfg.gnn.act]())
+            layers.append(register.act_dict['gelu']())
 
         layers.append(nn.Dropout(dropout))
         layers.append(nn.Linear(dim_in, dim_out, bias=True))

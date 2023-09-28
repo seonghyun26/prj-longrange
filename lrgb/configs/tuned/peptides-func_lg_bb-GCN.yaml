@@ -43,7 +43,6 @@ gnn:
   dim_inner: 228
   layer_type: gcnconv
   act: gelu
-  # act: relu
   residual: True
   dropout: 0.1
 optim:

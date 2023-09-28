@@ -7,7 +7,10 @@ from torch_geometric.graphgym.models.layer import LayerConfig
 from torch_geometric.graphgym.register import register_layer
 from torch_geometric.nn import Linear as Linear_pyg
 
-
+from torch_geometric.graphgym import cfg
+import torch_geometric.graphgym.register as register
+# import torch_geometric.nn.conv.gcn_conv.gcn_norm as gcn_norm
+import torch_geometric
 class GINEConvESLapPE(pyg_nn.conv.MessagePassing):
     """GINEConv Layer with EquivStableLapPE implementation.
 
@@ -97,22 +100,25 @@ class GINEConvLayer(nn.Module):
         self.dropout = dropout
         self.residual = residual
 
+        # gin_nn = nn.Sequential(
+        #     pyg_nn.Linear(dim_in, dim_out),
+        #     nn.ReLU(),
+        #     pyg_nn.Linear(dim_out, dim_out)
+        # )
         gin_nn = nn.Sequential(
             pyg_nn.Linear(dim_in, dim_out),
-            nn.ReLU(),
-            pyg_nn.Linear(dim_out, dim_out)
+            register.act_dict[cfg.gnn.act](),
+            nn.Dropout(self.dropout),
+            pyg_nn.Linear(dim_out, dim_out),
+            nn.Dropout(self.dropout),
         )
         self.model = pyg_nn.GINEConv(gin_nn)
-        self.batchNorm = nn.BatchNorm1d(dim_out, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+        # self.batchNorm = nn.BatchNorm1d(dim_out, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
 
     def forward(self, batch):
         x_in = batch.x
 
         batch.x = self.model(batch.x, batch.edge_index, batch.edge_attr)
-
-        batch.x = F.relu(batch.x)
-        batch.x = self.batchNorm(batch.x)
-        batch.x = F.dropout(batch.x, p=self.dropout, training=self.training)
 
         if self.residual:
             batch.x = x_in + batch.x  # residual connection
@@ -126,12 +132,19 @@ class GINEConvGraphGymLayer(nn.Module):
     def __init__(self, layer_config: LayerConfig, **kwargs):
         super().__init__()
         gin_nn = nn.Sequential(
-            Linear_pyg(layer_config.dim_in, layer_config.dim_out), nn.ReLU(),
+            Linear_pyg(layer_config.dim_in, layer_config.dim_out),
+            nn.ReLU(),
+            nn.BatchNorm1d(dim_out, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True),
             Linear_pyg(layer_config.dim_out, layer_config.dim_out))
         self.model = pyg_nn.GINEConv(gin_nn)
 
     def forward(self, batch):
+        # batch.edge_index, data.edge_weight = torch_geometric.nn.conv.gcn_conv.gcn_norm(
+        #         batch.edge_index, torch.max(batch.edge_index),
+        #         add_self_loops=cfg.gnn.self_loop
+        #     )
         batch.x = self.model(batch.x, batch.edge_index, batch.edge_attr)
         return batch
 
 register_layer('gineconv', GINEConvGraphGymLayer)
+# register_layer('gineconv', GINEConvLayer)

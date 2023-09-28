@@ -192,8 +192,11 @@ class lg2graphNode(nn.Module):
         if cfg.gnn.lgvariant == 21:
             batch.x = torch.cat([incomingNode[:, :self.hdim*2], outgoingNode[:, self.hdim*2:]], dim=1)
         elif cfg.gnn.lgvariant == 22:
-            # TODO: mix!
-            batch.x = torch.cat([incomingNode[:, :self.hdim*2], outgoingNode[:, self.hdim*2:]], dim=1)
+            batch.x = torch.cat([
+                (incomingNode[:, :self.hdim] - outgoingNode[:, :self.hdim])/2,
+                incomingNode[:, self.hdim:self.hdim*2],
+                outgoingNode[:, self.hdim*2:]
+            ], dim=1)
         else:
             batch.x = incomingNode - outgoingNode
         
